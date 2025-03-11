@@ -64,6 +64,7 @@ class User {
       const [result] = await pool.query(
         `INSERT INTO users (name, email, password, dob, phone, gender, address, role) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+
         [
           this.name,
           this.email,
@@ -108,6 +109,32 @@ class User {
       return rows.length > 0 ? rows[0] : null
     } catch (error) {
       console.error('Error finding user:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update user profile
+   * @param {number} id - User ID
+   * @param {object} userData - Updated user data
+   * @returns {object} - Updated user data
+   */
+  static async update(id, userData) {
+    try {
+      const pool = getPool()
+      const { name, email, phone, dob, gender, address } = userData
+
+      await pool.query(
+        `UPDATE users 
+         SET name = ?, email = ?, phone = ?, dob = ?, gender = ?, address = ? 
+         WHERE id = ?`,
+        [name, email, phone, dob, gender, address, id]
+      )
+
+      // Return updated user without password
+      return this.findByIdWithoutPassword(id)
+    } catch (error) {
+      console.error('Error updating user:', error)
       throw error
     }
   }

@@ -35,6 +35,23 @@ export const initializeTables = async () => {
       MODIFY role ENUM('patient', 'admin', 'staff') DEFAULT 'patient'
     `)
 
+    // Create appointments table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS appointments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        service VARCHAR(100) NOT NULL,
+        dentist VARCHAR(100) NOT NULL,
+        date DATE NOT NULL,
+        time TIME NOT NULL,
+        status ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'pending',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `)
+
     console.log('Database tables initialized successfully')
     return true
   } catch (error) {

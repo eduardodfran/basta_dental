@@ -1,5 +1,10 @@
 import express from 'express'
-import { loginUser, registerUser, getUserProfile } from './userController.js'
+import {
+  loginUser,
+  registerUser,
+  getUserProfile,
+  updateUserProfile,
+} from './userController.js'
 
 const router = express.Router()
 
@@ -14,5 +19,6 @@ router.post('/signup', registerUser)
 
 // User profile routes
 router.get('/profile/:id', getUserProfile)
+router.put('/users/:id', updateUserProfile) // Add new route for profile updates
 
 export default router

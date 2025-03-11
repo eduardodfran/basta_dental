@@ -119,3 +119,60 @@ export const getUserProfile = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
+
+/**
+ * Update user profile
+ */
+export const updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.params.id
+    const { name, email, phone, dob, gender, address } = req.body
+
+    // Validate input data
+    if (!name || !email || !dob) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, and date of birth are required',
+      })
+    }
+
+    // Check if user exists
+    const existingUser = await User.findById(userId)
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      })
+    }
+
+    // If email changed, check if new email is already in use
+    if (email !== existingUser.email) {
+      const userWithSameEmail = await User.findOne({ email })
+      if (userWithSameEmail) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email already in use',
+        })
+      }
+    }
+
+    // Update user
+    const updatedUser = await User.update(userId, {
+      name,
+      email,
+      phone,
+      dob,
+      gender,
+      address,
+    })
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: updatedUser,
+    })
+  } catch (error) {
+    console.error('Update profile error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}

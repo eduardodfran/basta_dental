@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BastaDental - User Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="logo">BastaDental</div>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="#" class="active">Dashboard</a></li>
+          <li><a href="book-appointment.html">Book Appointment</a></li>
+          <li><a href="#" id="logout-btn">Logout</a></li>
+        </ul>
+        <div class="burger">
+          <div class="line1"></div>
+          <div class="line2"></div>
+          <div class="line3"></div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <section class="dashboard">
+      <div class="container">
+        <div class="dashboard-header">
+          <h1>Welcome, <span id="user-name">User</span>!</h1>
+          <p>Manage your dental appointments and profile information</p>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Profile Section -->
+          <div class="dashboard-card profile-section">
+            <div class="card-header">
+              <h2><i class="fas fa-user"></i> My Profile</h2>
+            </div>
+            <div class="card-body">
+              <div class="profile-info">
+                <div class="profile-avatar">
+                  <i class="fas fa-user-circle"></i>
+                </div>
+                <form id="profile-form">
+                  <div class="form-group">
+                    <label for="full-name">Full Name</label>
+                    <input type="text" id="full-name" name="full-name" />
+                  </div>
+                  <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" />
+                  </div>
+                  <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone" />
+                  </div>
+                  <div class="form-group">
+                    <label for="dob">Date of Birth</label>
+                    <input type="date" id="dob" name="dob" />
+                  </div>
+                  <div class="form-group">
+                    <label for="address">Address</label>
+                    <textarea id="address" name="address" rows="3"></textarea>
+                  </div>
+                  <div class="form-status" id="profile-status"></div>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Profile
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Appointments Section -->
+          <div class="dashboard-card appointments-section">
+            <div class="card-header">
+              <h2><i class="fas fa-calendar-alt"></i> My Appointments</h2>
+              <a href="book-appointment.html" class="btn btn-sm">
+                <i class="fas fa-plus"></i> New Appointment
+              </a>
+            </div>
+            <div class="card-body">
+              <div class="appointments-list">
+                <table id="appointments-table">
+                  <thead>
+                    <tr>
+                      <th>Date & Time</th>
+                      <th>Service</th>
+                      <th>Dentist</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="appointments-data">
+                    <!-- Appointments will be loaded dynamically -->
+                  </tbody>
+                </table>
+                <div id="no-appointments" class="no-data-message">
+                  You don't have any appointments yet.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Appointment Modal -->
+    <div id="appointment-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Reschedule Appointment</h2>
+        <form id="reschedule-form">
+          <input type="hidden" id="appointment-id" />
+          <div class="form-group">
+            <label for="new-date">New Date</label>
+            <input type="date" id="new-date" required />
+          </div>
+          <div class="form-group">
+            <label for="new-time">New Time</label>
+            <input type="time" id="new-time" required />
+          </div>
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary">
+              Confirm Reschedule
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              id="cancel-reschedule"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <p>&copy; 2023 BastaDental. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script src="js/dashboard.js"></script>
+  </body>
+</html>
