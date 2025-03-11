@@ -3,6 +3,10 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import contactsRoutes from './contacts/contactsRoutes.js'
+import userRoutes from './user/userRoutes.js'
+import connectDB from './config/db.js'
+import { initializeTables } from './config/initDB.js'
+import cors from 'cors'
 
 // Set up paths and environment variables
 const __filename = fileURLToPath(import.meta.url)
@@ -13,7 +17,21 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') })
 const app = express()
 const PORT = process.env.PORT || 3000
 
-// Middlewares
+// Connect to MySQL and initialize database tables
+const initializeApp = async () => {
+  await connectDB()
+  await initializeTables()
+}
+initializeApp()
+
+// Middlewares - update CORS configuration
+app.use(
+  cors({
+    origin: ['http://localhost:5500', 'http://127.0.0.1:5500'], // Add any other origins you need
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
@@ -22,6 +40,7 @@ app.use(express.static(path.join(__dirname, '../frontend/public')))
 
 // API Routes
 app.use('/api/contacts', contactsRoutes)
+app.use('/api', userRoutes) // This will handle /api/login and /api/signup
 
 // Serve the main HTML file
 app.get('/', (req, res) => {

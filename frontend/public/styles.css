@@ -139,18 +139,30 @@ section {
 
 /* Hero Section */
 .hero {
-  height: 100vh;
-  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-    url('https://via.placeholder.com/1920x1080');
+  background-image: url('./images/caroline-lm--m-4tYmtLlI-unsplash.jpg');
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
+  min-height: 80vh;
+  position: relative;
   display: flex;
   align-items: center;
-  text-align: center;
-  color: white;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5); /* Dark overlay for better text visibility */
 }
 
 .hero-content {
+  position: relative;
+  z-index: 1;
+  color: white; /* Make text white for better contrast */
   max-width: 800px;
   margin: 0 auto;
 }
@@ -271,6 +283,50 @@ textarea {
   border: 1px solid #ddd;
   border-radius: 5px;
   font-family: inherit;
+}
+
+/* Add this to your existing CSS file */
+
+.form-status {
+  margin: 15px 0;
+  padding: 10px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Additional styling for form submitting state */
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Preview link for test emails */
+.preview-link {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #66a76f;
+  font-size: 0.9rem;
+}
+
+.preview-link a {
+  color: #2a7db7;
+  text-decoration: underline;
+}
+
+.preview-link a:hover {
+  text-decoration: none;
 }
 
 /* Footer */

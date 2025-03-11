@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DentalCare - Your Trusted Dental Clinic</title>
+    <title>BastaDental - Your Trusted Dental Clinic</title>
     <link rel="stylesheet" href="styles.css" />
     <link
       rel="stylesheet"
@@ -14,12 +14,12 @@
     <!-- Navbar -->
     <nav class="navbar">
       <div class="container">
-        <div class="logo">DentalCare</div>
+        <div class="logo">BastaDental</div>
         <ul class="nav-links">
           <li><a href="#home">Home</a></li>
           <li><a href="#about">About</a></li>
           <li><a href="#services">Services</a></li>
-          <li><a href="#login">Login/Signup</a></li>
+          <li><a href="./login.html">Login/Signup</a></li>
           <li><a href="#contact">Contact</a></li>
         </ul>
         <div class="burger">
@@ -34,7 +34,7 @@
     <section id="home" class="hero">
       <div class="container">
         <div class="hero-content">
-          <h1>Welcome to DentalCare</h1>
+          <h1>Welcome to BastaDental</h1>
           <p>Your trusted partner for a healthy and beautiful smile</p>
           <button class="btn btn-primary">Book Now</button>
         </div>
@@ -50,7 +50,7 @@
         <div class="about-content">
           <div class="about-text">
             <p>
-              At DentalCare, we pride ourselves on providing top-quality dental
+              At BastaDental, we pride ourselves on providing top-quality dental
               care in a comfortable and modern environment. With over 15 years
               of experience, our team of skilled dentists is dedicated to
               maintaining and improving your oral health.
@@ -62,7 +62,7 @@
           </div>
           <div class="about-image">
             <img
-              src="https://via.placeholder.com/400x300"
+              src="./images/benyamin-bohlouli-e7MJLM5VGjY-unsplash.jpg"
               alt="Dental clinic interior"
             />
           </div>
@@ -119,11 +119,20 @@
             </div>
             <div class="info-item">
               <i class="fas fa-envelope"></i>
-              <p>info@dentalcare.com</p>
+              <p>info@BastaDental.com</p>
             </div>
             <div class="map">
-              <iframe
+              <!-- <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.6175703560686!2d-73.9877116!3d40.7484405!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDDCsDQ0JzU0LjQiTiA3M8KwNTknMTUuOCJX!5e0!3m2!1sen!2sus!4v1631234567890!5m2!1sen!2sus"
+                width="100%"
+                height="300"
+                style="border: 0"
+                allowfullscreen=""
+                loading="lazy"
+              ></iframe> -->
+              <!-- Placeholder for Google Maps -->
+              <iframe
+                src="https://via.placeholder.com/600x300"
                 width="100%"
                 height="300"
                 style="border: 0"
@@ -133,7 +142,7 @@
             </div>
           </div>
           <div class="contact-form">
-            <form>
+            <form id="contact-form">
               <div class="form-group">
                 <label for="name">Name</label>
                 <input type="text" id="name" name="name" required />
@@ -155,8 +164,9 @@
                   required
                 ></textarea>
               </div>
+              <div id="form-status" class="form-status"></div>
               <button type="submit" class="btn btn-primary">
-                Send Message
+                <i class="fas fa-paper-plane"></i> Send Message
               </button>
             </form>
           </div>
@@ -167,7 +177,7 @@
     <!-- Footer -->
     <footer>
       <div class="container">
-        <p>&copy; 2023 DentalCare. All rights reserved.</p>
+        <p>&copy; 2023 BastaDental. All rights reserved.</p>
       </div>
     </footer>
 
@@ -178,5 +188,6 @@
         document.querySelector('.burger').classList.toggle('toggle')
       })
     </script>
+    <script src="js/contact.js"></script>
   </body>
 </html>

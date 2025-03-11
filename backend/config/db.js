@@ -1,4 +1,4 @@
-import mongoose from 'mongoose'
+import mysql from 'mysql2/promise'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -8,28 +8,43 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
-const MONGODB_URI =
-  process.env.MONGODB_URI || 'mongodb://localhost:27017/dentalcare'
+// MySQL connection configuration
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'root',
+  database: process.env.DB_NAME || 'basta_dental',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+}
+
+let pool
 
 /**
- * Connect to MongoDB database
+ * Connect to MySQL database and create a connection pool
  */
 const connectDB = async () => {
   try {
-    // Set mongoose options
-    const options = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    }
+    pool = mysql.createPool(dbConfig)
 
-    await mongoose.connect(MONGODB_URI, options)
-    console.log('MongoDB connected successfully')
+    // Verify connection by getting a connection from the pool
+    const connection = await pool.getConnection()
+    connection.release()
+
+    console.log('MySQL connected successfully')
+    return pool
   } catch (error) {
-    console.error('MongoDB connection error:', error.message)
-
-    // Continue with application instead of exiting process
+    console.error('MySQL connection error:', error.message)
     console.log('Application will continue without database functionality')
+    return null
   }
 }
+
+/**
+ * Get the MySQL connection pool
+ * @returns {Object} MySQL connection pool
+ */
+export const getPool = () => pool
 
 export default connectDB
