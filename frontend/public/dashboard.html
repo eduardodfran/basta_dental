@@ -10,6 +10,14 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
     />
+    <!-- Add auth.js before main script to protect the page -->
+    <script src="js/auth.js"></script>
+    <script>
+      // Immediately redirect if not authenticated - runs before page loads
+      if (!localStorage.getItem('user')) {
+        window.location.replace('login.html')
+      }
+    </script>
   </head>
   <body>
     <!-- Navbar -->
@@ -151,6 +159,16 @@
       </div>
     </footer>
 
+    <!-- Scripts -->
+    <script>
+      // Double-check authentication when DOM is fully loaded
+      document.addEventListener('DOMContentLoaded', function () {
+        if (!checkAuth()) {
+          // Stop all other script execution if not authenticated
+          return
+        }
+      })
+    </script>
     <script src="js/dashboard.js"></script>
   </body>
 </html>

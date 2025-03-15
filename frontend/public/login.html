@@ -9,6 +9,14 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
     />
+    <!-- Add auth.js before main script -->
+    <script src="js/auth.js"></script>
+    <script>
+      // Redirect already logged in users to dashboard - runs before page loads
+      if (localStorage.getItem('user')) {
+        window.location.replace('dashboard.html')
+      }
+    </script>
   </head>
   <body>
     <header>
@@ -44,6 +52,13 @@
         </div>
       </form>
     </div>
+    <script>
+      // Double-check when DOM is fully loaded
+      document.addEventListener('DOMContentLoaded', function () {
+        // This will redirect to dashboard if user is already logged in
+        redirectIfLoggedIn()
+      })
+    </script>
     <script src="js/user.js"></script>
   </body>
 </html>

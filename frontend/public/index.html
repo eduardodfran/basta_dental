@@ -9,6 +9,27 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
     />
+    <script src="js/auth.js"></script>
+    <script>
+      // Check if user is logged in when DOM is loaded
+      document.addEventListener('DOMContentLoaded', function () {
+        const user = localStorage.getItem('user')
+
+        // Update navigation based on login status
+        const authLinks = document.getElementById('auth-links')
+        const userLinks = document.getElementById('user-links')
+
+        if (user) {
+          // User is logged in
+          if (authLinks) authLinks.style.display = 'none'
+          if (userLinks) userLinks.style.display = 'flex'
+        } else {
+          // User is not logged in
+          if (authLinks) authLinks.style.display = 'flex'
+          if (userLinks) userLinks.style.display = 'none'
+        }
+      })
+    </script>
   </head>
   <body>
     <!-- Navbar -->
@@ -16,11 +37,24 @@
       <div class="container">
         <div class="logo">BastaDental</div>
         <ul class="nav-links">
-          <li><a href="#home">Home</a></li>
+          <!-- Main navigation links -->
+          <li><a href="#home" class="active">Home</a></li>
           <li><a href="#about">About</a></li>
           <li><a href="#services">Services</a></li>
-          <li><a href="./login.html">Login/Signup</a></li>
           <li><a href="#contact">Contact</a></li>
+
+          <!-- Auth links for non-logged in users -->
+          <div id="auth-links" style="display: flex">
+            <li><a href="login.html" class="highlight">Login</a></li>
+            <li><a href="signup.html" class="btn-secondary">Sign Up</a></li>
+          </div>
+
+          <!-- User links for logged in users -->
+          <div id="user-links" style="display: none">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="book-appointment.html">Book Appointment</a></li>
+            <li><a href="#" id="logout-btn">Logout</a></li>
+          </div>
         </ul>
         <div class="burger">
           <div class="line1"></div>
@@ -122,17 +156,8 @@
               <p>info@BastaDental.com</p>
             </div>
             <div class="map">
-              <!-- <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.6175703560686!2d-73.9877116!3d40.7484405!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDDCsDQ0JzU0LjQiTiA3M8KwNTknMTUuOCJX!5e0!3m2!1sen!2sus!4v1631234567890!5m2!1sen!2sus"
-                width="100%"
-                height="300"
-                style="border: 0"
-                allowfullscreen=""
-                loading="lazy"
-              ></iframe> -->
-              <!-- Placeholder for Google Maps -->
               <iframe
-                src="https://via.placeholder.com/600x300"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.6175703560686!2d-73.9877116!3d40.7484405!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDDCsDQ0JzU0LjQiTiA3M8KwNTknMTUuOCJX!5e0!3m2!1sen!2sus!4v1631234567890!5m2!1sen!2sus"
                 width="100%"
                 height="300"
                 style="border: 0"
@@ -186,6 +211,42 @@
       document.querySelector('.burger').addEventListener('click', function () {
         document.querySelector('.nav-links').classList.toggle('nav-active')
         document.querySelector('.burger').classList.toggle('toggle')
+      })
+
+      // Logout functionality
+      document
+        .getElementById('logout-btn')
+        ?.addEventListener('click', function (e) {
+          e.preventDefault()
+          localStorage.removeItem('user')
+          window.location.reload()
+        })
+
+      // Add active class to current section in navbar
+      document.addEventListener('DOMContentLoaded', function () {
+        // Get all sections
+        const sections = document.querySelectorAll('section[id]')
+
+        // Add scroll event listener
+        window.addEventListener('scroll', function () {
+          let current = ''
+
+          sections.forEach((section) => {
+            const sectionTop = section.offsetTop
+            const sectionHeight = section.clientHeight
+            if (pageYOffset >= sectionTop - 60) {
+              current = section.getAttribute('id')
+            }
+          })
+
+          // Update active class in navbar
+          document.querySelectorAll('.nav-links a').forEach((link) => {
+            link.classList.remove('active')
+            if (link.getAttribute('href') === `#${current}`) {
+              link.classList.add('active')
+            }
+          })
+        })
       })
     </script>
     <script src="js/contact.js"></script>

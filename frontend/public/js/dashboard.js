@@ -1,10 +1,9 @@
 document.addEventListener('DOMContentLoaded', function () {
-  // Check if user is logged in
-  const user = JSON.parse(localStorage.getItem('user'))
+  // Check if user is logged in - use our auth utility
+  const user = checkAuth()
   if (!user) {
-    // Redirect to login if no user data is found
-    window.location.href = 'login.html'
-    return
+    console.error('Not authenticated. Stopping script execution.')
+    return // Stop execution if not authenticated
   }
 
   // Initialize dashboard components
@@ -176,46 +175,98 @@ function setupEventListeners() {
     const user = JSON.parse(localStorage.getItem('user'))
     if (!user) return
 
-    const updatedData = {
-      name: document.getElementById('full-name').value,
-      email: document.getElementById('email').value,
-      phone: document.getElementById('phone').value,
-      dob: document.getElementById('dob').value,
-      address: document.getElementById('address').value,
+    // Get form values
+    const name = document.getElementById('full-name').value.trim()
+    const email = document.getElementById('email').value.trim()
+    const phone = document.getElementById('phone').value.trim()
+    const dob = document.getElementById('dob').value
+    const address = document.getElementById('address').value.trim()
+
+    // Validate form inputs
+    if (!name) {
+      showProfileStatus('Please enter your name', 'error')
+      return
     }
 
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showProfileStatus('Please enter a valid email address', 'error')
+      return
+    }
+
+    if (!dob) {
+      showProfileStatus('Please enter your date of birth', 'error')
+      return
+    }
+
+    // Prepare updated data (keeping existing gender value)
+    const updatedData = {
+      name,
+      email,
+      phone,
+      dob,
+      gender: user.gender || '', // Preserve the existing gender value
+      address,
+    }
+
+    // Show updating status
+    showProfileStatus('Updating profile...', 'info')
+
+    // Send update request to the server
+    fetch(`http://localhost:3000/api/users/${user.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatedData),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to update profile')
+        }
+        return response.json()
+      })
+      .then((data) => {
+        if (data.success) {
+          // Update local storage with the data from the server
+          localStorage.setItem('user', JSON.stringify(data.user))
+
+          // Update UI
+          document.getElementById('user-name').textContent = data.user.name
+          showProfileStatus('Profile updated successfully!', 'success')
+        } else {
+          throw new Error(data.message || 'Failed to update profile')
+        }
+      })
+      .catch((error) => {
+        console.error('Error updating profile:', error)
+        showProfileStatus(
+          error.message || 'Failed to update profile. Please try again.',
+          'error'
+        )
+      })
+  })
+
+  // Helper function to show profile status messages
+  function showProfileStatus(message, type) {
     const statusEl = document.getElementById('profile-status')
-    statusEl.textContent = 'Updating profile...'
+    statusEl.textContent = message
     statusEl.className = 'form-status'
-    statusEl.style.display = 'block'
 
-    // In a real implementation, this would be:
-    // fetch(`http://localhost:3000/api/users/${user.id}`, {
-    //   method: 'PUT',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(updatedData)
-    // })
-
-    // For now, we'll simulate the API call
-    setTimeout(() => {
-      // Simulate successful update
-      // Update the user data in localStorage
-      const updatedUser = { ...user, ...updatedData }
-      localStorage.setItem('user', JSON.stringify(updatedUser))
-
-      // Update user name in header
-      document.getElementById('user-name').textContent = updatedData.name
-
-      // Show success message
-      statusEl.textContent = 'Profile updated successfully!'
-      statusEl.className = 'form-status success'
-
-      // Hide message after 3 seconds
+    if (type === 'success') {
+      statusEl.classList.add('success')
+      // Auto-hide success messages after 3 seconds
       setTimeout(() => {
         statusEl.style.display = 'none'
       }, 3000)
-    }, 800) // Simulate network delay
-  })
+    } else if (type === 'error') {
+      statusEl.classList.add('error')
+    } else {
+      // For "info" or other types
+      statusEl.classList.add('info')
+    }
+
+    statusEl.style.display = 'block'
+  }
 
   // Logout button
   document.getElementById('logout-btn').addEventListener('click', function (e) {

@@ -1,0 +1,73 @@
+/* Add these styles to your existing CSS file */
+
+/* Highlight style for login link */
+.nav-links .highlight {
+  color: #1a73e8;
+  font-weight: bold;
+}
+
+.nav-links .highlight:hover {
+  color: #0d47a1;
+}
+
+/* Button style for signup link */
+.nav-links .btn-secondary {
+  background-color: #1a73e8;
+  color: white;
+  padding: 8px 15px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.nav-links .btn-secondary:hover {
+  background-color: #0d47a1;
+  color: white;
+}
+
+/* Make auth-links and user-links display inline with other nav items */
+#auth-links,
+#user-links {
+  display: flex;
+  align-items: center;
+  margin-left: auto; /* Push to the right side */
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  #auth-links,
+  #user-links {
+    flex-direction: column;
+    width: 100%;
+    margin-left: 0;
+    margin-top: 10px;
+  }
+
+  .nav-links .btn-secondary {
+    margin-top: 10px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .nav-links a.active:after {
+    display: none; /* Hide the bottom line on mobile */
+  }
+}
+
+/* Additional styles for navbar */
+
+/* Active link highlighting */
+.nav-links a.active {
+  color: #1a73e8;
+  font-weight: bold;
+  position: relative;
+}
+
+.nav-links a.active:after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background-color: #1a73e8;
+}

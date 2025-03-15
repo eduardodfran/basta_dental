@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BastaDental - Book Appointment</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="css/appointments.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <!-- Add auth.js before main script to protect the page -->
+    <script src="js/auth.js"></script>
+    <script>
+      // Immediately redirect if not authenticated - runs before page loads
+      if (!localStorage.getItem('user')) {
+        window.location.replace('login.html')
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="logo">BastaDental</div>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="#" class="active">Book Appointment</a></li>
+          <li><a href="#" id="logout-btn">Logout</a></li>
+        </ul>
+        <div class="burger">
+          <div class="line1"></div>
+          <div class="line2"></div>
+          <div class="line3"></div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Booking Content -->
+    <section class="booking-section">
+      <div class="container">
+        <div class="section-header">
+          <h1>Book Your Dental Appointment</h1>
+          <p>Choose your preferred date, time and services</p>
+        </div>
+
+        <div class="booking-container">
+          <!-- Multi-step booking form -->
+          <div class="booking-progress">
+            <div class="progress-step active" data-step="1">
+              <div class="step-number">1</div>
+              <div class="step-text">Service</div>
+            </div>
+            <div class="progress-connector"></div>
+            <div class="progress-step" data-step="2">
+              <div class="step-number">2</div>
+              <div class="step-text">Date & Time</div>
+            </div>
+            <div class="progress-connector"></div>
+            <div class="progress-step" data-step="3">
+              <div class="step-number">3</div>
+              <div class="step-text">Review</div>
+            </div>
+          </div>
+
+          <!-- Form wrapper -->
+          <div class="booking-form-container">
+            <form id="booking-form">
+              <!-- Step 1: Service Selection -->
+              <div class="form-step active" id="step-1">
+                <h2>Select a Service</h2>
+
+                <div class="service-options">
+                  <div class="service-option">
+                    <input
+                      type="radio"
+                      id="service-checkup"
+                      name="service"
+                      value="General Checkup"
+                      checked
+                    />
+                    <label for="service-checkup">
+                      <i class="fas fa-teeth"></i>
+                      <span class="service-name">General Checkup</span>
+                      <span class="service-duration">30 mins</span>
+                    </label>
+                  </div>
+
+                  <div class="service-option">
+                    <input
+                      type="radio"
+                      id="service-cleaning"
+                      name="service"
+                      value="Teeth Cleaning"
+                    />
+                    <label for="service-cleaning">
+                      <i class="fas fa-tooth"></i>
+                      <span class="service-name">Teeth Cleaning</span>
+                      <span class="service-duration">45 mins</span>
+                    </label>
+                  </div>
+
+                  <div class="service-option">
+                    <input
+                      type="radio"
+                      id="service-whitening"
+                      name="service"
+                      value="Teeth Whitening"
+                    />
+                    <label for="service-whitening">
+                      <i class="fas fa-smile"></i>
+                      <span class="service-name">Teeth Whitening</span>
+                      <span class="service-duration">60 mins</span>
+                    </label>
+                  </div>
+
+                  <div class="service-option">
+                    <input
+                      type="radio"
+                      id="service-filling"
+                      name="service"
+                      value="Dental Filling"
+                    />
+                    <label for="service-filling">
+                      <i class="fas fa-fill-drip"></i>
+                      <span class="service-name">Dental Filling</span>
+                      <span class="service-duration">45 mins</span>
+                    </label>
+                  </div>
+
+                  <div class="service-option">
+                    <input
+                      type="radio"
+                      id="service-rootcanal"
+                      name="service"
+                      value="Root Canal"
+                    />
+                    <label for="service-rootcanal">
+                      <i class="fas fa-briefcase-medical"></i>
+                      <span class="service-name">Root Canal</span>
+                      <span class="service-duration">90 mins</span>
+                    </label>
+                  </div>
+
+                  <div class="service-option">
+                    <input
+                      type="radio"
+                      id="service-extraction"
+                      name="service"
+                      value="Tooth Extraction"
+                    />
+                    <label for="service-extraction">
+                      <i class="fas fa-syringe"></i>
+                      <span class="service-name">Tooth Extraction</span>
+                      <span class="service-duration">45 mins</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="dentist-selection">
+                  <h3>Select a Dentist</h3>
+                  <select id="dentist" name="dentist" required>
+                    <option value="">Choose a dentist...</option>
+                    <option value="Dr. Sarah Johnson">Dr. Sarah Johnson</option>
+                    <option value="Dr. Michael Chen">Dr. Michael Chen</option>
+                    <option value="Dr. Emily Wilson">Dr. Emily Wilson</option>
+                    <option value="Dr. James Rodriguez">
+                      Dr. James Rodriguez
+                    </option>
+                  </select>
+                </div>
+
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-next">
+                    Next: Choose Date & Time <i class="fas fa-arrow-right"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 2: Date & Time Selection -->
+              <div class="form-step" id="step-2">
+                <h2>Select Date & Time</h2>
+
+                <div class="date-selection">
+                  <label for="appointment-date">Appointment Date</label>
+                  <input
+                    type="date"
+                    id="appointment-date"
+                    name="date"
+                    required
+                  />
+                </div>
+
+                <div class="time-slots">
+                  <h3>Available Time Slots</h3>
+                  <div class="time-slot-container" id="time-slots">
+                    <!-- Time slots will be dynamically generated here -->
+                    <p class="no-slots-message">
+                      Please select a date to see available time slots
+                    </p>
+                  </div>
+                </div>
+
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-prev">
+                    <i class="fas fa-arrow-left"></i> Previous
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-next"
+                    id="date-next-btn"
+                    disabled
+                  >
+                    Next: Review <i class="fas fa-arrow-right"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 3: Review & Confirm -->
+              <div class="form-step" id="step-3">
+                <h2>Review Your Appointment</h2>
+
+                <div class="appointment-summary">
+                  <div class="summary-item">
+                    <span class="summary-label"
+                      ><i class="fas fa-clipboard-check"></i> Service:</span
+                    >
+                    <span class="summary-value" id="summary-service"
+                      >General Checkup</span
+                    >
+                  </div>
+
+                  <div class="summary-item">
+                    <span class="summary-label"
+                      ><i class="fas fa-user-md"></i> Dentist:</span
+                    >
+                    <span class="summary-value" id="summary-dentist"
+                      >Dr. Sarah Johnson</span
+                    >
+                  </div>
+
+                  <div class="summary-item">
+                    <span class="summary-label"
+                      ><i class="fas fa-calendar-day"></i> Date:</span
+                    >
+                    <span class="summary-value" id="summary-date"
+                      >Not selected</span
+                    >
+                  </div>
+
+                  <div class="summary-item">
+                    <span class="summary-label"
+                      ><i class="fas fa-clock"></i> Time:</span
+                    >
+                    <span class="summary-value" id="summary-time"
+                      >Not selected</span
+                    >
+                  </div>
+                </div>
+
+                <div class="additional-notes">
+                  <label for="notes">Additional Notes (Optional)</label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows="3"
+                    placeholder="Please let us know if you have any special requirements or concerns"
+                  ></textarea>
+                </div>
+
+                <div class="booking-status" id="booking-status"></div>
+
+                <div class="form-navigation">
+                  <button type="button" class="btn btn-prev">
+                    <i class="fas fa-arrow-left"></i> Previous
+                  </button>
+                  <button type="submit" class="btn btn-confirm">
+                    Confirm Booking <i class="fas fa-check"></i>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <p>&copy; 2023 BastaDental. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+      // Double-check authentication when DOM is fully loaded
+      document.addEventListener('DOMContentLoaded', function () {
+        if (!checkAuth()) {
+          // Stop all other script execution if not authenticated
+          return
+        }
+      })
+    </script>
+    <script src="js/appointments.js"></script>
+  </body>
+</html>

@@ -145,13 +145,13 @@ export const updateUserProfile = async (req, res) => {
       })
     }
 
-    // If email changed, check if new email is already in use
+    // If email changed, check if new email is already in use by another user
     if (email !== existingUser.email) {
       const userWithSameEmail = await User.findOne({ email })
-      if (userWithSameEmail) {
+      if (userWithSameEmail && userWithSameEmail.id !== parseInt(userId)) {
         return res.status(400).json({
           success: false,
-          message: 'Email already in use',
+          message: 'Email already in use by another account',
         })
       }
     }

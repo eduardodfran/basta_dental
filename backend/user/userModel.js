@@ -64,7 +64,6 @@ class User {
       const [result] = await pool.query(
         `INSERT INTO users (name, email, password, dob, phone, gender, address, role) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-
         [
           this.name,
           this.email,
@@ -124,12 +123,17 @@ class User {
       const pool = getPool()
       const { name, email, phone, dob, gender, address } = userData
 
+      console.log(`Updating user ${id} with data:`, userData)
+
+      // Remove updated_at reference since it doesn't exist in the table
       await pool.query(
         `UPDATE users 
-         SET name = ?, email = ?, phone = ?, dob = ?, gender = ?, address = ? 
+         SET name = ?, email = ?, phone = ?, dob = ?, gender = ?, address = ?
          WHERE id = ?`,
         [name, email, phone, dob, gender, address, id]
       )
+
+      console.log(`User ${id} updated successfully`)
 
       // Return updated user without password
       return this.findByIdWithoutPassword(id)
