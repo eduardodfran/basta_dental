@@ -111,7 +111,7 @@ function loadAppointments() {
           row.dataset.appointmentId = apt.id
           row.innerHTML = `
             <td>${apt.id}</td>
-            <td>${apt.userName || apt.userId || 'Unknown'}</td>
+            <td>${apt.userName || apt.user_id || 'Unknown'}</td>
             <td>${apt.service}</td>
             <td>${formattedDate}<br>${formattedTime}</td>
             <td>${apt.dentist}</td>
@@ -371,12 +371,12 @@ function openAppointmentModal(appointmentId) {
         <div class="detail-item">
           <div class="detail-label">Patient:</div>
           <div class="detail-value">${
-            apt.userName || apt.userId || 'Unknown'
+            apt.userName || apt.user_id || 'Unknown'
           }</div>
         </div>
         <div class="detail-item">
           <div class="detail-label">User ID:</div>
-          <div class="detail-value">${apt.userId}</div>
+          <div class="detail-value">${apt.user_id}</div>
         </div>
         <div class="detail-item">
           <div class="detail-label">Service:</div>
@@ -661,7 +661,16 @@ function updateAppointmentStatus(appointmentId, status) {
   })
     .then((response) => {
       if (!response.ok) {
-        throw new Error('Failed to update appointment status')
+        return response
+          .json()
+          .then((data) => {
+            throw new Error(
+              data.message || 'Failed to update appointment status'
+            )
+          })
+          .catch(() => {
+            throw new Error(`Server error: ${response.status}`)
+          })
       }
       return response.json()
     })
@@ -691,7 +700,14 @@ function updateUserRole(userId, role) {
   })
     .then((response) => {
       if (!response.ok) {
-        throw new Error('Failed to update user role')
+        return response
+          .json()
+          .then((data) => {
+            throw new Error(data.message || 'Failed to update user role')
+          })
+          .catch(() => {
+            throw new Error(`Server error: ${response.status}`)
+          })
       }
       return response.json()
     })
@@ -922,6 +938,18 @@ function setupEventListeners() {
       element.addEventListener('click', function () {
         closeModal()
       })
+    })
+
+  // Add explicit handler for the button to close appointment modal
+  document.getElementById('close-modal').addEventListener('click', function () {
+    closeModal('appointment-modal')
+  })
+
+  // Add explicit handler for the button to close user modal
+  document
+    .getElementById('close-user-modal')
+    .addEventListener('click', function () {
+      closeModal('user-modal')
     })
 
   document

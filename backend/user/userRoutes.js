@@ -4,6 +4,10 @@ import {
   registerUser,
   getUserProfile,
   updateUserProfile,
+  getAllUsers,
+  updateUserRole,
+  getDentistProfile,
+  updateDentistProfile,
 } from './userController.js'
 
 const router = express.Router()
@@ -18,7 +22,15 @@ router.post('/login', loginUser)
 router.post('/signup', registerUser)
 
 // User profile routes
-router.get('/profile/:id', getUserProfile)
-router.put('/users/:id', updateUserProfile) // Add new route for profile updates
+router.get('/users/:id', getUserProfile)
+router.put('/users/:id', updateUserProfile)
+
+// Admin routes
+router.get('/users', getAllUsers)
+router.put('/users/:id/role', updateUserRole)
+
+// Dentist routes
+router.get('/dentists/:id', getDentistProfile)
+router.put('/dentists/:id', updateDentistProfile)
 
 export default router

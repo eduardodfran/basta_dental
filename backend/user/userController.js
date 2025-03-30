@@ -176,3 +176,157 @@ export const updateUserProfile = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
+
+/**
+ * Get all users (for admin)
+ */
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.findAll()
+
+    res.json({
+      success: true,
+      users,
+    })
+  } catch (error) {
+    console.error('Get all users error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Update user role (for admin)
+ */
+export const updateUserRole = async (req, res) => {
+  try {
+    const userId = req.params.id
+    const { role } = req.body
+
+    // Validate role
+    if (!role || !['patient', 'admin', 'dentist'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid role is required',
+      })
+    }
+
+    // Check if user exists
+    const existingUser = await User.findById(userId)
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      })
+    }
+
+    // Update user role
+    const updatedUser = await User.updateRole(userId, role)
+
+    // Add user to dentists table if role is dentist
+    if (role === 'dentist') {
+      // Check if the user is already in the dentists table
+      const existingDentist = await User.findDentistByUserId(userId)
+
+      if (!existingDentist) {
+        // Add to dentists table
+        await User.addUserToDentists(userId)
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'User role updated successfully',
+      user: updatedUser,
+    })
+  } catch (error) {
+    console.error('Update user role error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Get dentist profile
+ */
+export const getDentistProfile = async (req, res) => {
+  try {
+    const userId = req.params.id
+
+    // Check if user is a dentist
+    const user = await User.findByIdWithoutPassword(userId)
+    if (!user || user.role !== 'dentist') {
+      return res.status(404).json({
+        success: false,
+        message: 'Dentist not found',
+      })
+    }
+
+    // Get dentist details
+    const dentist = await User.findDentistByUserId(userId)
+    if (!dentist) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dentist details not found',
+      })
+    }
+
+    // Combine user and dentist info
+    const dentistProfile = {
+      ...user,
+      ...dentist,
+    }
+
+    res.json({
+      success: true,
+      dentist: dentistProfile,
+    })
+  } catch (error) {
+    console.error('Get dentist profile error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Update dentist profile
+ */
+export const updateDentistProfile = async (req, res) => {
+  try {
+    const userId = req.params.id
+    const { specialization, bio } = req.body
+
+    // Check if user is a dentist
+    const user = await User.findById(userId)
+    if (!user || user.role !== 'dentist') {
+      return res.status(404).json({
+        success: false,
+        message: 'Dentist not found',
+      })
+    }
+
+    // Get dentist details
+    const dentist = await User.findDentistByUserId(userId)
+    if (!dentist) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dentist details not found',
+      })
+    }
+
+    // Update dentist details
+    const updatedDentist = await User.updateDentistProfile(dentist.id, {
+      specialization,
+      bio,
+    })
+
+    res.json({
+      success: true,
+      message: 'Dentist profile updated successfully',
+      dentist: {
+        ...user,
+        ...updatedDentist,
+      },
+    })
+  } catch (error) {
+    console.error('Update dentist profile error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}

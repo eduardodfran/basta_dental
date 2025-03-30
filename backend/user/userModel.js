@@ -86,6 +86,7 @@ class User {
 
   /**
    * Compare a candidate password with the stored hash
+   * @param {string} hashedPassword - Stored hashed password
    * @param {string} candidatePassword - Password to check
    * @returns {boolean} - True if passwords match
    */
@@ -139,6 +140,244 @@ class User {
       return this.findByIdWithoutPassword(id)
     } catch (error) {
       console.error('Error updating user:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Find all users (for admin)
+   * @returns {Array} - Array of user objects without passwords
+   */
+  static async findAll() {
+    try {
+      const pool = getPool()
+      const [rows] = await pool.query(`
+        SELECT id, name, email, dob, phone, gender, address, role, created_at 
+        FROM users 
+        ORDER BY created_at DESC
+      `)
+      return rows
+    } catch (error) {
+      console.error('Error finding all users:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update user role
+   * @param {number} id - User ID
+   * @param {string} role - New role
+   * @returns {object} - Updated user data
+   */
+  static async updateRole(id, role) {
+    try {
+      const pool = getPool()
+      await pool.query(`UPDATE users SET role = ? WHERE id = ?`, [role, id])
+
+      return this.findByIdWithoutPassword(id)
+    } catch (error) {
+      console.error('Error updating user role:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Find a dentist by user ID
+   * @param {number} userId - User ID
+   * @returns {Object|null} - Dentist object or null if not found
+   */
+  static async findDentistByUserId(userId) {
+    try {
+      const pool = getPool()
+      const [rows] = await pool.query(
+        'SELECT * FROM dentists WHERE user_id = ?',
+        [userId]
+      )
+      return rows.length > 0 ? rows[0] : null
+    } catch (error) {
+      console.error('Error finding dentist:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Add a user to the dentists table
+   * @param {number} userId - User ID
+   * @returns {Object} - Created dentist object
+   */
+  static async addUserToDentists(userId) {
+    try {
+      const pool = getPool()
+
+      // First get the user's data
+      const [userData] = await pool.query(
+        'SELECT name, phone FROM users WHERE id = ?',
+        [userId]
+      )
+
+      if (userData.length === 0) {
+        throw new Error(`User with ID ${userId} not found`)
+      }
+
+      // Check if the dentist record already exists
+      const [existingDentist] = await pool.query(
+        'SELECT * FROM dentists WHERE user_id = ?',
+        [userId]
+      )
+
+      if (existingDentist.length > 0) {
+        return existingDentist[0] // Return existing record if found
+      }
+
+      try {
+        // Get table structure to understand required fields
+        const [columns] = await pool.query(`DESCRIBE dentists`)
+        const columnNames = columns.map((col) => col.Field)
+        const hasPhoneColumn = columnNames.includes('phone')
+        const hasNameColumn = columnNames.includes('name')
+
+        // Build the query dynamically based on table structure
+        let query = 'INSERT INTO dentists (user_id, specialization, bio'
+        let values = [userId, '', '']
+        let placeholders = '?, ?, ?'
+
+        if (hasPhoneColumn) {
+          query += ', phone'
+          placeholders += ', ?'
+          values.push(userData[0].phone || '')
+        }
+
+        if (hasNameColumn) {
+          query += ', name'
+          placeholders += ', ?'
+          values.push(userData[0].name || '')
+        }
+
+        query += ') VALUES (' + placeholders + ')'
+
+        const [result] = await pool.query(query, values)
+
+        const [dentist] = await pool.query(
+          'SELECT * FROM dentists WHERE id = ?',
+          [result.insertId]
+        )
+
+        return dentist[0]
+      } catch (error) {
+        console.error('Error adding user to dentists table:', error)
+
+        // Fall back to specific queries if the dynamic approach fails
+        if (error.code === 'ER_NO_DEFAULT_FOR_FIELD') {
+          if (
+            error.sqlMessage?.includes(
+              "Field 'phone' doesn't have a default value"
+            )
+          ) {
+            console.log('Table requires phone field, trying with phone value')
+            const [result] = await pool.query(
+              'INSERT INTO dentists (user_id, specialization, bio, phone) VALUES (?, ?, ?, ?)',
+              [userId, '', '', userData[0].phone || '']
+            )
+
+            const [dentist] = await pool.query(
+              'SELECT * FROM dentists WHERE id = ?',
+              [result.insertId]
+            )
+
+            return dentist[0]
+          } else if (
+            error.sqlMessage?.includes(
+              "Field 'name' doesn't have a default value"
+            )
+          ) {
+            console.log('Table requires name field, trying with name value')
+            const [result] = await pool.query(
+              'INSERT INTO dentists (user_id, specialization, bio, name) VALUES (?, ?, ?, ?)',
+              [userId, '', '', userData[0].name]
+            )
+
+            const [dentist] = await pool.query(
+              'SELECT * FROM dentists WHERE id = ?',
+              [result.insertId]
+            )
+
+            return dentist[0]
+          } else if (
+            error.sqlMessage?.includes(
+              "Field 'phone' doesn't have a default value"
+            ) &&
+            error.sqlMessage?.includes(
+              "Field 'name' doesn't have a default value"
+            )
+          ) {
+            console.log('Table requires both phone and name fields')
+            const [result] = await pool.query(
+              'INSERT INTO dentists (user_id, specialization, bio, phone, name) VALUES (?, ?, ?, ?, ?)',
+              [userId, '', '', userData[0].phone || '', userData[0].name]
+            )
+
+            const [dentist] = await pool.query(
+              'SELECT * FROM dentists WHERE id = ?',
+              [result.insertId]
+            )
+
+            return dentist[0]
+          }
+        }
+
+        // If none of the specific error cases match, rethrow the error
+        throw error
+      }
+    } catch (error) {
+      console.error('Error adding user to dentists:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update dentist profile
+   * @param {number} dentistId - Dentist ID
+   * @param {object} data - Dentist data (specialization, bio)
+   * @returns {object} - Updated dentist object
+   */
+  static async updateDentistProfile(dentistId, data) {
+    try {
+      const pool = getPool()
+      const { specialization, bio } = data
+
+      await pool.query(
+        'UPDATE dentists SET specialization = ?, bio = ? WHERE id = ?',
+        [specialization, bio, dentistId]
+      )
+
+      const [rows] = await pool.query('SELECT * FROM dentists WHERE id = ?', [
+        dentistId,
+      ])
+
+      return rows[0]
+    } catch (error) {
+      console.error('Error updating dentist profile:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get all dentists
+   * @returns {Array} - Array of dentist objects with user info
+   */
+  static async getAllDentists() {
+    try {
+      const pool = getPool()
+      const [rows] = await pool.query(`
+        SELECT d.*, u.name, u.email, u.phone 
+        FROM dentists d
+        JOIN users u ON d.user_id = u.id
+        WHERE u.role = 'dentist'
+        ORDER BY u.name
+      `)
+      return rows
+    } catch (error) {
+      console.error('Error finding all dentists:', error)
       throw error
     }
   }

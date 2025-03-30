@@ -25,7 +25,6 @@ class Appointment {
       const [result] = await pool.query(
         `INSERT INTO appointments (user_id, service, dentist, date, time, status, notes) 
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-
         [
           this.userId,
           this.service,
@@ -199,6 +198,29 @@ class Appointment {
       return appointments
     } catch (error) {
       console.error('Error finding all appointments:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Find appointments by dentist name
+   * @param {string} dentistName - Dentist name
+   * @returns {Array} - Array of appointment objects
+   */
+  static async findByDentistName(dentistName) {
+    try {
+      const pool = getPool()
+      const [rows] = await pool.query(
+        `SELECT a.*, u.name as userName 
+         FROM appointments a
+         LEFT JOIN users u ON a.user_id = u.id
+         WHERE a.dentist = ? 
+         ORDER BY a.date ASC, a.time ASC`,
+        [dentistName]
+      )
+      return rows
+    } catch (error) {
+      console.error('Error finding dentist appointments:', error)
       throw error
     }
   }

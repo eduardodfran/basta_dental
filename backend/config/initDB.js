@@ -23,7 +23,7 @@ export const initializeTables = async () => {
         phone VARCHAR(20),
         gender ENUM('male', 'female', 'other', ''),
         address TEXT,
-        role ENUM('patient', 'admin', 'staff') DEFAULT 'patient',
+        role ENUM('patient', 'admin', 'staff', 'dentist') DEFAULT 'patient',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `)
@@ -52,7 +52,7 @@ export const initializeTables = async () => {
     // Ensure the existing users table has the correct ENUM definition for the role column
     await pool.query(`
       ALTER TABLE users
-      MODIFY role ENUM('patient', 'admin', 'staff') DEFAULT 'patient'
+      MODIFY role ENUM('patient', 'admin', 'dentist') DEFAULT 'patient'
     `)
 
     // Create appointments table
@@ -92,6 +92,188 @@ export const initializeTables = async () => {
       )
     }
 
+    // Create dentists table if it doesn't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS dentists (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL UNIQUE,
+        specialization VARCHAR(100) DEFAULT '',
+        bio TEXT,
+        phone VARCHAR(20) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `)
+
+    // Check if dentists table has the required columns and add them if not
+    try {
+      // Check for phone column
+      const [phoneColumns] = await pool.query(`
+        SHOW COLUMNS FROM dentists LIKE 'phone'
+      `)
+
+      if (phoneColumns.length === 0) {
+        // phone column doesn't exist, so add it
+        await pool.query(`
+          ALTER TABLE dentists
+          ADD COLUMN phone VARCHAR(20) DEFAULT ''
+        `)
+        console.log('Added phone column to dentists table')
+      }
+
+      // Check for user_id column
+      const [userIdColumns] = await pool.query(`
+        SHOW COLUMNS FROM dentists LIKE 'user_id'
+      `)
+
+      if (userIdColumns.length === 0) {
+        // user_id column doesn't exist, so add it
+        await pool.query(`
+          ALTER TABLE dentists
+          ADD COLUMN user_id INT NOT NULL UNIQUE,
+          ADD FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        `)
+        console.log('Added user_id column to dentists table')
+      }
+
+      // Check for bio column
+      const [bioColumns] = await pool.query(`
+        SHOW COLUMNS FROM dentists LIKE 'bio'
+      `)
+
+      if (bioColumns.length === 0) {
+        // bio column doesn't exist, so add it
+        await pool.query(`
+          ALTER TABLE dentists
+          ADD COLUMN bio TEXT
+        `)
+        console.log('Added bio column to dentists table')
+      }
+
+      // Check if dentists table has a 'name' column and drop it if it exists
+      const [nameColumns] = await pool.query(`
+        SHOW COLUMNS FROM dentists LIKE 'name'
+      `)
+
+      if (nameColumns.length > 0) {
+        // The 'name' column exists but we don't need it, so drop it
+        try {
+          await pool.query(`
+            ALTER TABLE dentists
+            DROP COLUMN name
+          `)
+          console.log('Dropped unnecessary name column from dentists table')
+        } catch (dropError) {
+          console.error('Could not drop name column:', dropError.message)
+          console.log('Will attempt to keep the column but make it optional')
+
+          // Make the column optional by adding a default value
+          await pool.query(`
+            ALTER TABLE dentists
+            MODIFY name VARCHAR(100) DEFAULT ''
+          `)
+          console.log('Made name column optional with default value')
+        }
+      }
+    } catch (error) {
+      console.error(
+        'Error checking/updating dentists table structure:',
+        error.message
+      )
+    }
+
+    // Check if dentists table has the user_id column and add it if not
+    try {
+      const [columns] = await pool.query(`
+        SHOW COLUMNS FROM dentists LIKE 'user_id'
+      `)
+
+      if (columns.length === 0) {
+        // user_id column doesn't exist, so add it
+        await pool.query(`
+          ALTER TABLE dentists
+          ADD COLUMN user_id INT NOT NULL UNIQUE,
+          ADD FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        `)
+        console.log('Added user_id column to dentists table')
+      }
+    } catch (error) {
+      console.error(
+        'Error checking/adding user_id column to dentists:',
+        error.message
+      )
+    }
+
+    // Check if dentists table has the bio column and add it if not
+    try {
+      const [columns] = await pool.query(`
+        SHOW COLUMNS FROM dentists LIKE 'bio'
+      `)
+
+      if (columns.length === 0) {
+        // bio column doesn't exist, so add it
+        await pool.query(`
+          ALTER TABLE dentists
+          ADD COLUMN bio TEXT
+        `)
+        console.log('Added bio column to dentists table')
+      }
+    } catch (error) {
+      console.error(
+        'Error checking/adding bio column to dentists:',
+        error.message
+      )
+    }
+
+    // Check if dentists table has a 'name' column and drop it if it exists
+    try {
+      const [nameColumns] = await pool.query(`
+        SHOW COLUMNS FROM dentists LIKE 'name'
+      `)
+
+      if (nameColumns.length > 0) {
+        // The 'name' column exists but we don't need it, so drop it
+        await pool.query(`
+          ALTER TABLE dentists
+          DROP COLUMN name
+        `)
+        console.log('Dropped unnecessary name column from dentists table')
+      }
+    } catch (error) {
+      console.error(
+        'Error checking/dropping name column from dentists:',
+        error.message
+      )
+    }
+
+    // Create dentist availability table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS dentist_availability (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        dentist_id INT NOT NULL,
+        date DATE NOT NULL,
+        time_start TIME NOT NULL,
+        time_end TIME NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (dentist_id) REFERENCES dentists(id) ON DELETE CASCADE
+      )
+    `)
+
+    // Create patient notes table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS patient_notes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        dentist_id INT NOT NULL,
+        patient_id INT NOT NULL,
+        appointment_id INT,
+        notes TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (dentist_id) REFERENCES dentists(id) ON DELETE CASCADE,
+        FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL
+      )
+    `)
+
     console.log('Database tables initialized successfully')
     return true
   } catch (error) {
@@ -100,46 +282,45 @@ export const initializeTables = async () => {
   }
 }
 
+// additional Tables - commented out reference code
+/*
+CREATE TABLE dentists (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  specialization VARCHAR(255),
+  phone VARCHAR(20) NOT NULL,
+  email VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-// additional Tables
+CREATE TABLE appointments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  dentist_id INT NOT NULL,
+  date DATE NOT NULL,
+  time TIME NOT NULL,
+  reason TEXT,
+  status ENUM('pending', 'confirmed', 'canceled') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (dentist_id) REFERENCES dentists(id) ON DELETE CASCADE
+);
 
-// CREATE TABLE dentists (
-//   id INT AUTO_INCREMENT PRIMARY KEY,
-//   name VARCHAR(255) NOT NULL,
-//   specialization VARCHAR(255),
-//   phone VARCHAR(20) NOT NULL,
-//   email VARCHAR(255),
-//   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-// );
+CREATE TABLE availability (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  dentist_id INT NOT NULL,
+  date DATE NOT NULL,
+  time TIME NOT NULL,
+  status ENUM('available', 'booked') DEFAULT 'available',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (dentist_id) REFERENCES dentists(id) ON DELETE CASCADE
+);
 
-
-// CREATE TABLE appointments (
-//   id INT AUTO_INCREMENT PRIMARY KEY,
-//   user_id INT NOT NULL,
-//   dentist_id INT NOT NULL,
-//   date DATE NOT NULL,
-//   time TIME NOT NULL,
-//   reason TEXT,
-//   status ENUM('pending', 'confirmed', 'canceled') DEFAULT 'pending',
-//   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-//   FOREIGN KEY (dentist_id) REFERENCES dentists(id) ON DELETE CASCADE
-// );
-
-// CREATE TABLE availability (
-//   id INT AUTO_INCREMENT PRIMARY KEY,
-//   dentist_id INT NOT NULL,
-//   date DATE NOT NULL,
-//   time TIME NOT NULL,
-//   status ENUM('available', 'booked') DEFAULT 'available',
-//   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//   FOREIGN KEY (dentist_id) REFERENCES dentists(id) ON DELETE CASCADE
-// );
-
-// CREATE TABLE contact_messages (
-//   id INT AUTO_INCREMENT PRIMARY KEY,
-//   name VARCHAR(255) NOT NULL,
-//   email VARCHAR(255) NOT NULL,
-//   message TEXT NOT NULL,
-//   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-// );
+CREATE TABLE contact_messages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+*/

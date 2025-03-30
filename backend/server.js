@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url'
 import contactsRoutes from './contacts/contactsRoutes.js'
 import userRoutes from './user/userRoutes.js'
 import appointmentRoutes from './appointments/appointmentsRoutes.js'
+import analyticsRoutes from './analytics/analyticsRoutes.js'
+import dentistRoutes from './dentist/dentistRoutes.js'
 import connectDB from './config/db.js'
 import { initializeTables } from './config/initDB.js'
 import cors from 'cors'
@@ -45,6 +47,8 @@ app.use(express.static(path.join(__dirname, '../frontend/public')))
 app.use('/api/contacts', contactsRoutes)
 app.use('/api', userRoutes) // This will handle /api/login and /api/signup
 app.use('/api/appointments', appointmentRoutes) // Add appointments routes
+app.use('/api/analytics', analyticsRoutes) // Add analytics routes
+app.use('/api/dentist', dentistRoutes) // Add dentist routes
 
 // Serve the main HTML file
 app.get('/', (req, res) => {

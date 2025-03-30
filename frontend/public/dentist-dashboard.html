@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BastaDental - Dentist Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="css/dentist.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <!-- Add auth.js before main script to protect the page -->
+    <script src="js/auth.js"></script>
+    <script>
+      // Immediately redirect if not authenticated - runs before page loads
+      if (!localStorage.getItem('user')) {
+        window.location.replace('login.html')
+      } else {
+        // Check if user is dentist, redirect if not
+        try {
+          const user = JSON.parse(localStorage.getItem('user'))
+          if (user.role !== 'dentist') {
+            alert('Access denied. Dentist access only.')
+            window.location.replace('dashboard.html')
+          }
+        } catch (e) {
+          localStorage.removeItem('user')
+          window.location.replace('login.html')
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="logo">BastaDental Dentist</div>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="dashboard.html">Personal Dashboard</a></li>
+          <li><a href="#" class="active">Dentist Dashboard</a></li>
+          <li><a href="#" id="logout-btn">Logout</a></li>
+        </ul>
+        <div class="burger">
+          <div class="line1"></div>
+          <div class="line2"></div>
+          <div class="line3"></div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Dentist Dashboard Content -->
+    <section class="dentist-dashboard">
+      <div class="container">
+        <div class="dashboard-header">
+          <h1>Welcome, Dr. <span id="dentist-name">Name</span>!</h1>
+          <p>Manage your appointments and patient information</p>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="dentist-tabs">
+          <button class="tab-btn active" data-tab="appointments">
+            <i class="fas fa-calendar-alt"></i> Appointments
+          </button>
+          <button class="tab-btn" data-tab="availability">
+            <i class="fas fa-clock"></i> Availability
+          </button>
+          <button class="tab-btn" data-tab="profile">
+            <i class="fas fa-user-md"></i> Profile
+          </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+          <!-- Appointments Tab -->
+          <div class="tab-pane active" id="appointments-tab">
+            <div class="tab-header">
+              <h2>Upcoming Appointments</h2>
+              <div class="filters">
+                <select id="status-filter">
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+                <input
+                  type="date"
+                  id="date-filter"
+                  placeholder="Filter by date"
+                />
+                <button id="clear-filters" class="btn btn-sm">Clear</button>
+              </div>
+            </div>
+            <div class="appointments-list">
+              <table id="dentist-appointments-table">
+                <thead>
+                  <tr>
+                    <th>Date & Time</th>
+                    <th>Patient</th>
+                    <th>Service</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="appointments-data">
+                  <!-- Appointments will be loaded dynamically -->
+                </tbody>
+              </table>
+              <div id="no-appointments" class="no-data-message">
+                No appointments found.
+              </div>
+            </div>
+          </div>
+
+          <!-- Availability Tab -->
+          <div class="tab-pane" id="availability-tab">
+            <div class="tab-header">
+              <h2>Manage Your Availability</h2>
+            </div>
+            <div class="availability-container">
+              <div class="availability-form">
+                <h3>Set New Availability</h3>
+                <form id="availability-form">
+                  <div class="form-group">
+                    <label for="availability-date">Date</label>
+                    <input type="date" id="availability-date" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="time-start">Start Time</label>
+                    <input type="time" id="time-start" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="time-end">End Time</label>
+                    <input type="time" id="time-end" required />
+                  </div>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Availability
+                  </button>
+                  <div id="availability-status" class="form-status"></div>
+                </form>
+              </div>
+              <div class="availability-list">
+                <h3>Current Availability</h3>
+                <div id="availability-calendar">
+                  <!-- Availability will be loaded dynamically -->
+                </div>
+                <div id="no-availability" class="no-data-message">
+                  No availability set.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Tab -->
+          <div class="tab-pane" id="profile-tab">
+            <div class="tab-header">
+              <h2>Your Dentist Profile</h2>
+            </div>
+            <div class="profile-container">
+              <div class="profile-form">
+                <h3>Professional Information</h3>
+                <form id="dentist-profile-form">
+                  <div class="form-group">
+                    <label for="specialization">Specialization</label>
+                    <input
+                      type="text"
+                      id="specialization"
+                      placeholder="e.g., Orthodontics, Pediatric Dentistry"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="bio">Professional Bio</label>
+                    <textarea
+                      id="bio"
+                      rows="5"
+                      placeholder="Tell patients about your experience and expertise"
+                    ></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Profile
+                  </button>
+                  <div id="profile-status" class="form-status"></div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Appointment Detail Modal -->
+    <div id="appointment-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Appointment Details</h2>
+        <div id="appointment-details">
+          <!-- Details will be loaded dynamically -->
+        </div>
+        <div class="patient-notes-section">
+          <h3>Patient Notes</h3>
+          <textarea
+            id="patient-notes"
+            rows="4"
+            placeholder="Add notes about this patient or appointment"
+          ></textarea>
+        </div>
+        <div class="modal-actions">
+          <button id="confirm-appointment" class="btn btn-success">
+            <i class="fas fa-check"></i> Confirm
+          </button>
+          <button id="complete-appointment" class="btn btn-primary">
+            <i class="fas fa-check-double"></i> Complete
+          </button>
+          <button id="cancel-appointment" class="btn btn-danger">
+            <i class="fas fa-times"></i> Cancel
+          </button>
+          <button id="save-notes" class="btn btn-info">
+            <i class="fas fa-save"></i> Save Notes
+          </button>
+          <button id="close-modal" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <p>&copy; 2025 BastaDental. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+      // Double-check authentication when DOM is fully loaded
+      document.addEventListener('DOMContentLoaded', function () {
+        // Check if user is dentist, redirect if not
+        try {
+          const user = JSON.parse(localStorage.getItem('user'))
+          if (!user || user.role !== 'dentist') {
+            alert('Access denied. Dentist access only.')
+            window.location.replace('dashboard.html')
+            return
+          }
+        } catch (e) {
+          localStorage.removeItem('user')
+          window.location.replace('login.html')
+          return
+        }
+      })
+    </script>
+    <script src="js/dentist.js"></script>
+  </body>
+</html>
