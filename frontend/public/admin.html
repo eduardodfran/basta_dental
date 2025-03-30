@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BastaDental - Admin Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="css/admin.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <!-- Add auth.js before main script to protect the page -->
+    <script src="js/auth.js"></script>
+    <script>
+      // Immediately redirect if not authenticated or not admin - runs before page loads
+      const user = localStorage.getItem('user')
+      if (!user) {
+        window.location.replace('login.html')
+      } else {
+        try {
+          const userData = JSON.parse(user)
+          if (userData.role !== 'admin') {
+            alert('Access denied. Admin privileges required.')
+            window.location.replace('dashboard.html')
+          }
+        } catch (e) {
+          localStorage.removeItem('user')
+          window.location.replace('login.html')
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="logo">BastaDental Admin</div>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="dashboard.html">User Dashboard</a></li>
+          <li><a href="#" class="active">Admin</a></li>
+          <li><a href="#" id="logout-btn">Logout</a></li>
+        </ul>
+        <div class="burger">
+          <div class="line1"></div>
+          <div class="line2"></div>
+          <div class="line3"></div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Admin Dashboard Content -->
+    <section class="admin-dashboard">
+      <div class="container">
+        <div class="admin-header">
+          <h1>Admin Dashboard</h1>
+          <p>Manage appointments, users, and clinic operations</p>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="admin-tabs">
+          <button class="tab-btn active" data-tab="appointments">
+            <i class="fas fa-calendar-alt"></i> Appointments
+          </button>
+          <button class="tab-btn" data-tab="users">
+            <i class="fas fa-users"></i> Users
+          </button>
+          <button class="tab-btn" data-tab="analytics">
+            <i class="fas fa-chart-bar"></i> Analytics
+          </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+          <!-- Appointments Tab -->
+          <div class="tab-pane active" id="appointments-tab">
+            <div class="tab-header">
+              <h2>Manage Appointments</h2>
+              <div class="filters">
+                <select id="status-filter">
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="completed">Completed</option>
+                </select>
+                <input
+                  type="date"
+                  id="date-filter"
+                  placeholder="Filter by date"
+                />
+                <button id="clear-filters" class="btn btn-sm">
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+            <div class="appointments-list">
+              <table id="admin-appointments-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Patient</th>
+                    <th>Service</th>
+                    <th>Date & Time</th>
+                    <th>Dentist</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="appointments-data">
+                  <!-- Appointments will be loaded dynamically -->
+                </tbody>
+              </table>
+              <div id="no-appointments" class="no-data-message">
+                No appointments found matching your criteria.
+              </div>
+            </div>
+          </div>
+
+          <!-- Users Tab -->
+          <div class="tab-pane" id="users-tab">
+            <div class="tab-header">
+              <h2>Manage Users</h2>
+              <div class="filters">
+                <input
+                  type="text"
+                  id="search-users"
+                  placeholder="Search by name or email"
+                />
+                <select id="role-filter">
+                  <option value="all">All Roles</option>
+                  <option value="patient">Patients</option>
+                  <option value="staff">Staff</option>
+                  <option value="admin">Admins</option>
+                </select>
+                <button id="clear-user-filters" class="btn btn-sm">
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div class="users-list">
+              <table id="users-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>Joined</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-data">
+                  <!-- Users will be loaded dynamically -->
+                </tbody>
+              </table>
+              <div id="no-users" class="no-data-message">
+                No users found matching your criteria.
+              </div>
+            </div>
+          </div>
+
+          <!-- Analytics Tab -->
+          <div class="tab-pane" id="analytics-tab">
+            <div class="tab-header">
+              <h2>Clinic Analytics</h2>
+              <div class="date-range">
+                <input type="date" id="analytics-start-date" />
+                <span>to</span>
+                <input type="date" id="analytics-end-date" />
+                <button id="update-analytics" class="btn btn-sm">Update</button>
+              </div>
+            </div>
+            <div class="analytics-cards">
+              <div class="analytics-card">
+                <div class="analytics-icon">
+                  <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="analytics-data">
+                  <h3>Total Appointments</h3>
+                  <p id="total-appointments">Loading...</p>
+                </div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-icon">
+                  <i class="fas fa-user-plus"></i>
+                </div>
+                <div class="analytics-data">
+                  <h3>New Patients</h3>
+                  <p id="new-users">Loading...</p>
+                </div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-icon">
+                  <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="analytics-data">
+                  <h3>Completion Rate</h3>
+                  <p id="completion-rate">Loading...</p>
+                </div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-icon">
+                  <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="analytics-data">
+                  <h3>Cancellation Rate</h3>
+                  <p id="cancellation-rate">Loading...</p>
+                </div>
+              </div>
+            </div>
+            <div class="charts-container">
+              <div class="chart-wrapper">
+                <h3>Appointments by Service</h3>
+                <div id="services-chart" class="chart-placeholder">
+                  <i class="fas fa-chart-pie"></i>
+                  <p>Chart data will appear here</p>
+                </div>
+              </div>
+              <div class="chart-wrapper">
+                <h3>Appointments by Day</h3>
+                <div id="days-chart" class="chart-placeholder">
+                  <i class="fas fa-chart-bar"></i>
+                  <p>Chart data will appear here</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Appointment Detail Modal -->
+    <div id="appointment-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Appointment Details</h2>
+        <div id="appointment-details">
+          <!-- Details will be loaded dynamically -->
+        </div>
+        <div class="modal-actions">
+          <button id="confirm-appointment" class="btn btn-success">
+            <i class="fas fa-check"></i> Confirm
+          </button>
+          <button id="complete-appointment" class="btn btn-primary">
+            <i class="fas fa-check-double"></i> Mark as Completed
+          </button>
+          <button id="cancel-appointment" class="btn btn-danger">
+            <i class="fas fa-times"></i> Cancel Appointment
+          </button>
+          <button id="close-modal" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Detail Modal -->
+    <div id="user-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>User Details</h2>
+        <div id="user-details">
+          <!-- Details will be loaded dynamically -->
+        </div>
+        <div class="user-appointments">
+          <h3>User's Appointments</h3>
+          <div id="user-appointments-list">
+            <!-- User appointments will be loaded dynamically -->
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="edit-user-role" class="btn btn-primary">
+            <i class="fas fa-user-edit"></i> Change Role
+          </button>
+          <button id="close-user-modal" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Role Modal -->
+    <div id="role-modal" class="modal">
+      <div class="modal-content modal-sm">
+        <span class="close">&times;</span>
+        <h2>Change User Role</h2>
+        <form id="change-role-form">
+          <input type="hidden" id="user-id" />
+          <div class="form-group">
+            <label for="user-role">Select Role</label>
+            <select id="user-role" required>
+              <option value="patient">Patient</option>
+              <option value="staff">Staff</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary">Update Role</button>
+            <button
+              type="button"
+              id="cancel-role-change"
+              class="btn btn-secondary"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <p>&copy; 2025 BastaDental. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+      // Double-check authentication when DOM is fully loaded
+      document.addEventListener('DOMContentLoaded', function () {
+        if (!checkAdminAuth()) {
+          // Stop all other script execution if not authenticated as admin
+          return
+        }
+      })
+    </script>
+    <script src="js/admin.js"></script>
+  </body>
+</html>

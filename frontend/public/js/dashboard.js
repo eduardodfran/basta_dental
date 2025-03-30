@@ -29,6 +29,12 @@ function loadUserData() {
   // Update user name in header
   document.getElementById('user-name').textContent = user.name
 
+  // Check if user is admin and show/hide admin link
+  const adminLink = document.getElementById('admin-link')
+  if (adminLink) {
+    adminLink.style.display = user.role === 'admin' ? 'block' : 'none'
+  }
+
   // Fill profile form with user data
   document.getElementById('full-name').value = user.name
   document.getElementById('email').value = user.email

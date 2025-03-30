@@ -186,3 +186,104 @@ export const rescheduleAppointment = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
+
+/**
+ * Get all appointments (for admin)
+ */
+export const getAllAppointments = async (req, res) => {
+  try {
+    const appointments = await Appointment.findAll()
+
+    // Get user names for each appointment
+    for (let apt of appointments) {
+      try {
+        // Join with user data to get user names if available
+        // This will be implemented in the model
+      } catch (error) {
+        console.error(
+          `Error getting user details for appointment ${apt.id}:`,
+          error
+        )
+        // Continue with other appointments even if one fails
+      }
+    }
+
+    res.json({
+      success: true,
+      appointments,
+    })
+  } catch (error) {
+    console.error('Get all appointments error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Get appointment by ID
+ */
+export const getAppointmentById = async (req, res) => {
+  try {
+    const appointmentId = req.params.id
+
+    const appointment = await Appointment.findById(appointmentId)
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      })
+    }
+
+    res.json({
+      success: true,
+      appointment,
+    })
+  } catch (error) {
+    console.error('Get appointment by ID error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Update appointment status
+ */
+export const updateAppointmentStatus = async (req, res) => {
+  try {
+    const appointmentId = req.params.id
+    const { status } = req.body
+
+    if (
+      !status ||
+      !['pending', 'confirmed', 'cancelled', 'completed'].includes(status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid status is required',
+      })
+    }
+
+    // Check if appointment exists
+    const appointment = await Appointment.findById(appointmentId)
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      })
+    }
+
+    // Update appointment status
+    const updatedAppointment = await Appointment.updateStatus(
+      appointmentId,
+      status
+    )
+
+    res.json({
+      success: true,
+      message: `Appointment marked as ${status} successfully`,
+      appointment: updatedAppointment,
+    })
+  } catch (error) {
+    console.error('Update appointment status error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}

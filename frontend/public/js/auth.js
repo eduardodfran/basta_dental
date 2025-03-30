@@ -10,22 +10,22 @@ function checkAuth() {
   try {
     const userString = localStorage.getItem('user')
     if (!userString) {
-      console.log('No user found in localStorage. Redirecting to login...')
+      console.log('Not logged in. Redirecting to login page...')
       window.location.replace('login.html')
       return null
     }
 
     const user = JSON.parse(userString)
-    if (!user || !user.id) {
-      console.log('Invalid user data in localStorage. Redirecting to login...')
-      localStorage.removeItem('user') // Clear invalid data
-      window.location.replace('login.html')
-      return null
+    if (user && user.id) {
+      return user
     }
 
-    return user
+    // If the user data is invalid, clear it
+    localStorage.removeItem('user')
+    window.location.replace('login.html')
+    return null
   } catch (error) {
-    console.error('Error checking authentication:', error)
+    console.error('Error checking auth:', error)
     localStorage.removeItem('user') // Clear potentially corrupt data
     window.location.replace('login.html')
     return null
@@ -57,5 +57,42 @@ function redirectIfLoggedIn() {
     console.error('Error checking if logged in:', error)
     localStorage.removeItem('user') // Clear potentially corrupt data
     return false
+  }
+}
+
+/**
+ * Check if user is logged in and has admin role, redirect if not
+ * @return {Object|null} User object if logged in as admin, null if redirecting
+ */
+function checkAdminAuth() {
+  try {
+    const userString = localStorage.getItem('user')
+    if (!userString) {
+      console.log('Not logged in. Redirecting to login page...')
+      window.location.replace('login.html')
+      return null
+    }
+
+    const user = JSON.parse(userString)
+    if (!user || !user.id) {
+      // If the user data is invalid, clear it
+      localStorage.removeItem('user')
+      window.location.replace('login.html')
+      return null
+    }
+
+    if (user.role !== 'admin') {
+      console.log('Not an admin. Redirecting to dashboard...')
+      alert('Access denied. Admin privileges required.')
+      window.location.replace('dashboard.html')
+      return null
+    }
+
+    return user
+  } catch (error) {
+    console.error('Error checking admin auth:', error)
+    localStorage.removeItem('user') // Clear potentially corrupt data
+    window.location.replace('login.html')
+    return null
   }
 }

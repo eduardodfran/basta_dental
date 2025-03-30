@@ -8,6 +8,7 @@ import appointmentRoutes from './appointments/appointmentsRoutes.js'
 import connectDB from './config/db.js'
 import { initializeTables } from './config/initDB.js'
 import cors from 'cors'
+import { createAdminUser } from './config/seedAdmin.js'
 
 // Set up paths and environment variables
 const __filename = fileURLToPath(import.meta.url)
@@ -22,6 +23,7 @@ const PORT = process.env.PORT || 3000
 const initializeApp = async () => {
   await connectDB()
   await initializeTables()
+  await createAdminUser()
 }
 initializeApp()
 

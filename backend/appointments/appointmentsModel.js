@@ -25,6 +25,7 @@ class Appointment {
       const [result] = await pool.query(
         `INSERT INTO appointments (user_id, service, dentist, date, time, status, notes) 
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+
         [
           this.userId,
           this.service,
@@ -177,6 +178,27 @@ class Appointment {
       return this.findById(id)
     } catch (error) {
       console.error('Error rescheduling appointment:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Find all appointments
+   * @returns {Array} - Array of appointment objects
+   */
+  static async findAll() {
+    try {
+      const pool = getPool()
+      const [appointments] = await pool.query(`
+        SELECT a.*, u.name as userName 
+        FROM appointments a
+        LEFT JOIN users u ON a.user_id = u.id
+        ORDER BY a.date DESC, a.time ASC
+      `)
+
+      return appointments
+    } catch (error) {
+      console.error('Error finding all appointments:', error)
       throw error
     }
   }
