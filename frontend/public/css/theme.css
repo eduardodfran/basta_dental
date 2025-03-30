@@ -1,0 +1,198 @@
+:root {
+  /* Light Mode (Default) - Enhanced with vibrant colors */
+  --primary-color: #2a7db7;
+  --primary-dark: #1a5f8b;
+  --primary-light: #5fa1d3;
+  --secondary-color: #ff6b6b;
+  --secondary-dark: #e05050;
+  --accent-color: #28a745;
+  --accent-secondary: #ffc107;
+  --gradient-primary: linear-gradient(
+    135deg,
+    var(--primary-color),
+    var(--primary-dark)
+  );
+  --gradient-secondary: linear-gradient(
+    135deg,
+    var(--secondary-color),
+    var(--secondary-dark)
+  );
+  --text-color: #333;
+  --text-light: #666;
+  --bg-color: #ffffff;
+  --bg-light: #f8f9fa;
+  --bg-card: #ffffff;
+  --border-color: #dde1e7;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-dark: rgba(0, 0, 0, 0.2);
+  --success-bg: #d4edda;
+  --success-color: #155724;
+  --error-bg: #f8d7da;
+  --error-color: #721c24;
+  --warning-bg: #fff3cd;
+  --warning-color: #856404;
+  --info-bg: #d1ecf1;
+  --info-color: #0c5460;
+  --header-overlay: rgba(0, 0, 0, 0.5);
+  --hero-text: #ffffff;
+  --card-hover-transform: translateY(-10px);
+  --card-hover-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] {
+  /* Dark Mode - Enhanced with more vivid colors */
+  --primary-color: #64b5f6;
+  --primary-dark: #2286c3;
+  --primary-light: #9be7ff;
+  --secondary-color: #ff7597;
+  --secondary-dark: #c62e65;
+  --accent-color: #4ecca3;
+  --accent-secondary: #ffeb3b;
+  --gradient-primary: linear-gradient(135deg, var(--primary-color), #4d88ff);
+  --gradient-secondary: linear-gradient(
+    135deg,
+    var(--secondary-color),
+    #ff5252
+  );
+  --text-color: #e0e0e0;
+  --text-light: #b0b0b0;
+  --bg-color: #121212;
+  --bg-light: #1e1e1e;
+  --bg-card: #242424;
+  --border-color: #333333;
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --shadow-dark: rgba(0, 0, 0, 0.7);
+  --success-bg: #124a20;
+  --success-color: #8fd19e;
+  --error-bg: #541a1f;
+  --error-color: #f1aeb5;
+  --warning-bg: #533f03;
+  --warning-color: #ffda6a;
+  --info-bg: #0a3e44;
+  --info-color: #9eeaf9;
+  --header-overlay: rgba(0, 0, 0, 0.7);
+  --hero-text: #ffffff;
+  --card-hover-transform: translateY(-8px) scale(1.02);
+  --card-hover-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+}
+
+/* Enhanced transitions for smooth theme switching */
+body {
+  transition: background-color 0.5s ease, color 0.3s ease;
+}
+
+input,
+select,
+textarea,
+button,
+.card,
+.service-card,
+.nav-links a {
+  transition: all 0.3s ease;
+}
+
+/* Theme toggle button styles - Enhanced with animation and gradient */
+.theme-toggle {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 3px 15px var(--shadow-color);
+  z-index: 1000;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.theme-toggle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gradient-secondary);
+  opacity: 0;
+  border-radius: 50%;
+  transition: opacity 0.3s ease;
+}
+
+.theme-toggle:hover::before {
+  opacity: 1;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-5px) rotate(5deg);
+  box-shadow: 0 8px 25px var(--shadow-dark);
+}
+
+.theme-toggle i {
+  font-size: 1.8rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Animation for theme toggle */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(var(--primary-color-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0);
+  }
+}
+
+.theme-toggle.animate i {
+  animation: spin 0.5s ease-in-out;
+}
+
+.theme-toggle.animate {
+  animation: pulse 0.5s;
+}
+
+/* Gradient text utility class */
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}

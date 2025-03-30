@@ -1,0 +1,2 @@
+- it should have light mode and dark mode
+- UI is a priority, make sure it has an great and impressive ui with different colors

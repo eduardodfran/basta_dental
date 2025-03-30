@@ -41,7 +41,14 @@ function loadUserData() {
 
 // Format date from MySQL format to input field format (YYYY-MM-DD)
 function formatDateForInput(dateString) {
+  if (!dateString) return ''
+
+  // Handle both date-only strings and full ISO strings
   const date = new Date(dateString)
+  if (isNaN(date.getTime())) {
+    console.error('Invalid date:', dateString)
+    return ''
+  }
   return date.toISOString().split('T')[0]
 }
 
@@ -57,112 +64,110 @@ function loadAppointments() {
   tableBody.innerHTML =
     '<tr><td colspan="5" style="text-align: center;">Loading appointments...</td></tr>'
 
-  // Make API request to get user appointments
-  // In a real implementation, this would be:
-  // fetch(`http://localhost:3000/api/appointments/user/${user.id}`)
+  // Fetch real appointments from the API
+  fetch(`http://localhost:3000/api/appointments/user/${user.id}`)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error('Failed to fetch appointments')
+      }
+      return response.json()
+    })
+    .then((data) => {
+      // Clear previous data
+      tableBody.innerHTML = ''
 
-  // For now, we'll simulate the API call with mock data based on user ID
-  setTimeout(() => {
-    // This simulates an API call - in production, replace with actual fetch
-    const appointments = getAppointmentsForUser(user.id)
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to load appointments')
+      }
 
-    // Clear previous data
-    tableBody.innerHTML = ''
+      const appointments = data.appointments
 
-    if (appointments.length === 0) {
-      tableBody.style.display = 'none'
-      noAppointmentsMsg.style.display = 'block'
-    } else {
-      tableBody.style.display = 'table-row-group'
-      noAppointmentsMsg.style.display = 'none'
+      if (appointments.length === 0) {
+        tableBody.style.display = 'none'
+        noAppointmentsMsg.style.display = 'block'
+      } else {
+        tableBody.style.display = 'table-row-group'
+        noAppointmentsMsg.style.display = 'none'
 
-      // Add appointments to table
-      appointments.forEach((apt) => {
-        const row = document.createElement('tr')
-        row.dataset.appointmentId = apt.id
+        // Add appointments to table
+        appointments.forEach((apt) => {
+          const row = document.createElement('tr')
+          row.dataset.appointmentId = apt.id
 
-        // Format date for display
-        const dateObj = new Date(apt.date + (apt.time ? 'T' + apt.time : ''))
-        const formattedDate = dateObj.toLocaleDateString('en-US', {
-          weekday: 'short',
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        })
-        const formattedTime = apt.time
-          ? dateObj.toLocaleTimeString('en-US', {
+          // Handle the date correctly
+          // First, make sure we're working with a proper date string in YYYY-MM-DD format
+          let dateStr = apt.date
+          if (typeof dateStr === 'string' && dateStr.includes('T')) {
+            dateStr = dateStr.split('T')[0]
+          }
+
+          // Create the date object with correct timezone adjustment
+          const dateObj = new Date(dateStr)
+
+          // Add 1 day to compensate for potential timezone issue
+          // This is a common issue when the server returns dates in UTC
+          // but the browser interprets them in local timezone
+          // Only do this if the date appears to be off by a day
+          const now = new Date()
+          const timezoneOffset = now.getTimezoneOffset()
+          if (timezoneOffset > 0) {
+            dateObj.setDate(dateObj.getDate() + 1)
+          }
+
+          // Format the date
+          const formattedDate = dateObj.toLocaleDateString('en-US', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          })
+
+          // Format the time if available
+          let formattedTime = 'N/A'
+          if (apt.time) {
+            // Time is usually stored as HH:MM:SS, create a Date with this time
+            const [hours, minutes] = apt.time.split(':')
+            const timeObj = new Date()
+            timeObj.setHours(hours, minutes, 0)
+
+            formattedTime = timeObj.toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit',
             })
-          : 'N/A'
+          }
 
-        row.innerHTML = `
-          <td>${formattedDate}<br>${formattedTime}</td>
-          <td>${apt.service}</td>
-          <td>${apt.dentist}</td>
-          <td><span class="appointment-status status-${apt.status}">${
-          apt.status.charAt(0).toUpperCase() + apt.status.slice(1)
-        }</span></td>
-          <td class="appointment-actions">
-            ${
-              apt.status === 'completed' || apt.status === 'cancelled'
-                ? ''
-                : `
-              <button class="action-btn btn-reschedule" title="Reschedule">
-                <i class="fas fa-calendar-alt"></i>
-              </button>
-              <button class="action-btn btn-cancel" title="Cancel">
-                <i class="fas fa-times-circle"></i>
-              </button>
-            `
-            }
-          </td>
-        `
+          row.innerHTML = `
+            <td>${formattedDate}<br>${formattedTime}</td>
+            <td>${apt.service}</td>
+            <td>${apt.dentist}</td>
+            <td><span class="appointment-status status-${apt.status}">${
+            apt.status.charAt(0).toUpperCase() + apt.status.slice(1)
+          }</span></td>
+            <td class="appointment-actions">
+              ${
+                apt.status === 'completed' || apt.status === 'cancelled'
+                  ? ''
+                  : `
+                <button class="action-btn btn-reschedule" title="Reschedule">
+                  <i class="fas fa-calendar-alt"></i>
+                </button>
+                <button class="action-btn btn-cancel" title="Cancel">
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              `
+              }
+            </td>
+          `
 
-        tableBody.appendChild(row)
-      })
-    }
-  }, 500) // Simulate network delay
-}
-
-// Mock function to get appointments for a specific user
-// In production, this would be replaced with an actual API call
-function getAppointmentsForUser(userId) {
-  // This is just for demonstration - in a real app, this would be an API call
-  const mockAppointments = {
-    1: [
-      // User with ID 1
-      {
-        id: 101,
-        date: '2023-10-15',
-        time: '10:00',
-        service: 'General Checkup',
-        dentist: 'Dr. Sarah Johnson',
-        status: 'confirmed',
-      },
-      {
-        id: 102,
-        date: '2023-11-05',
-        time: '14:30',
-        service: 'Teeth Whitening',
-        dentist: 'Dr. Michael Chen',
-        status: 'pending',
-      },
-    ],
-    2: [
-      // User with ID 2
-      {
-        id: 201,
-        date: '2023-10-10',
-        time: '09:15',
-        service: 'Root Canal',
-        dentist: 'Dr. Emily Wilson',
-        status: 'completed',
-      },
-    ],
-  }
-
-  return mockAppointments[userId] || []
+          tableBody.appendChild(row)
+        })
+      }
+    })
+    .catch((error) => {
+      console.error('Error loading appointments:', error)
+      tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #721c24;">
+        Error loading appointments: ${error.message}</td></tr>`
+    })
 }
 
 // Setup event listeners for various interactions
@@ -312,24 +317,33 @@ function setupEventListeners() {
       const newDate = document.getElementById('new-date').value
       const newTime = document.getElementById('new-time').value
 
-      // In a real implementation, this would be:
-      // fetch(`http://localhost:3000/api/appointments/${appointmentId}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ date: newDate, time: newTime })
-      // })
-
-      // For now, we'll simulate the API call
-      setTimeout(() => {
-        // Display success message
-        alert(
-          `Appointment ${appointmentId} rescheduled to ${newDate} at ${newTime}`
-        )
-
-        closeModal()
-        // Reload appointments to show updated data
-        loadAppointments()
-      }, 500)
+      fetch(
+        `http://localhost:3000/api/appointments/${appointmentId}/reschedule`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: newDate, time: newTime }),
+        }
+      )
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Failed to reschedule appointment')
+          }
+          return response.json()
+        })
+        .then((data) => {
+          if (data.success) {
+            closeModal()
+            // Reload appointments to show updated data
+            loadAppointments()
+          } else {
+            throw new Error(data.message || 'Failed to reschedule appointment')
+          }
+        })
+        .catch((error) => {
+          console.error('Error rescheduling appointment:', error)
+          alert(`Error: ${error.message}`)
+        })
     })
 }
 
@@ -338,9 +352,14 @@ function openRescheduleModal(appointmentId) {
   const modal = document.getElementById('appointment-modal')
   document.getElementById('appointment-id').value = appointmentId
 
-  // Set minimum date to today
-  const today = new Date().toISOString().split('T')[0]
-  document.getElementById('new-date').min = today
+  // Set minimum date to today with proper formatting
+  const today = new Date()
+  const yyyy = today.getFullYear()
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const dd = String(today.getDate()).padStart(2, '0')
+  const formattedToday = `${yyyy}-${mm}-${dd}`
+
+  document.getElementById('new-date').min = formattedToday
 
   modal.style.display = 'block'
 }
@@ -353,16 +372,27 @@ function closeModal() {
 // Confirm appointment cancellation
 function confirmCancelAppointment(appointmentId) {
   if (confirm('Are you sure you want to cancel this appointment?')) {
-    // In a real implementation, this would be:
-    // fetch(`http://localhost:3000/api/appointments/${appointmentId}/cancel`, {
-    //   method: 'PUT'
-    // })
-
-    // For now, we'll simulate the API call
-    setTimeout(() => {
-      alert(`Appointment ${appointmentId} has been cancelled.`)
-      loadAppointments()
-    }, 500)
+    fetch(`http://localhost:3000/api/appointments/${appointmentId}/cancel`, {
+      method: 'PUT',
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to cancel appointment')
+        }
+        return response.json()
+      })
+      .then((data) => {
+        if (data.success) {
+          // Reload appointments to show updated data
+          loadAppointments()
+        } else {
+          throw new Error(data.message || 'Failed to cancel appointment')
+        }
+      })
+      .catch((error) => {
+        console.error('Error cancelling appointment:', error)
+        alert(`Error: ${error.message}`)
+      })
   }
 }
 
