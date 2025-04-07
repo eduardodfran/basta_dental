@@ -9,6 +9,8 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
     />
+    <!-- Add notification system first -->
+    <script src="js/notifications.js"></script>
     <script src="js/auth.js"></script>
     <script>
       // Check if user is logged in when DOM is loaded
@@ -23,6 +25,20 @@
           // User is logged in
           if (authLinks) authLinks.style.display = 'none'
           if (userLinks) userLinks.style.display = 'flex'
+
+          // Check if we should redirect to appropriate dashboard
+          try {
+            const userData = JSON.parse(user)
+            // Check if user just landed on the homepage but should go to their dashboard
+            if (
+              window.location.pathname === '/' ||
+              window.location.pathname === '/index.html'
+            ) {
+              redirectBasedOnRole()
+            }
+          } catch (e) {
+            console.error('Error parsing user data:', e)
+          }
         } else {
           // User is not logged in
           if (authLinks) authLinks.style.display = 'flex'
@@ -230,41 +246,57 @@
           const user = localStorage.getItem('user')
 
           if (user) {
-            // Logged in - redirect to booking page
-            window.location.href = 'book-appointment.html'
+            try {
+              const userData = JSON.parse(user)
+              // Check if user is a dentist
+              if (userData.role === 'dentist') {
+                showNotificationDialog( for dentists
+                  'Access Restricted',
+                  'As a dentist, you cannot book appointments. Please use your dentist dashboard to manage appointments.' 'As a dentist, you cannot book appointments. Please use your dentist dashboard to manage appointments.',
+                )
+                window.location.href = 'dentist-dashboard.html'> window.location.href = 'dentist-dashboard.html'
+              } else {
+                // Not a dentist - redirect to booking page
+                window.location.href = 'book-appointment.html' // For patients and admins - redirect to booking page
+              }cation.href = 'book-appointment.html'
+            } catch (e) {
+              console.error('Error parsing user data:', e)
+              window.location.href = 'book-appointment.html' console.error('Error parsing user data:', e)
+            }ation.href = 'book-appointment.html'
           } else {
             // Not logged in - redirect to login page
-            window.location.href = 'login.html'
-          }
-        })
+            window.location.href = 'login.html'gged in - redirect to login page
+          }  window.location.href = 'login.html'
+        })          }
 
       // Add active class to current section in navbar
       document.addEventListener('DOMContentLoaded', function () {
         // Get all sections
-        const sections = document.querySelectorAll('section[id]')
+        const sections = document.querySelectorAll('section[id]')        // Get all sections
 
         // Add scroll event listener
-        window.addEventListener('scroll', function () {
-          let current = ''
+        window.addEventListener('scroll', function () {t listener
+          let current = ''        window.addEventListener('scroll', function () {
 
           sections.forEach((section) => {
             const sectionTop = section.offsetTop
             const sectionHeight = section.clientHeight
-            if (pageYOffset >= sectionTop - 60) {
-              current = section.getAttribute('id')
-            }
-          })
+            if (pageYOffset >= sectionTop - 60) {ght
+              current = section.getAttribute('id')et >= sectionTop - 60) {
+            }  current = section.getAttribute('id')
+          })            }
 
           // Update active class in navbar
           document.querySelectorAll('.nav-links a').forEach((link) => {
             link.classList.remove('active')
             if (link.getAttribute('href') === `#${current}`) {
-              link.classList.add('active')
-            }
-          })
-        })
+              link.classList.add('active')(link.getAttribute('href') === `#${current}`) {
+            }link.classList.add('active')
+          })  }
+        })  })
       })
     </script>
     <script src="js/contact.js"></script>
   </body>
+  <script src="js/contact.js"></script>
 </html>

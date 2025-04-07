@@ -225,3 +225,21 @@ export const getPatientNotes = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }
+
+/**
+ * Get all dentists
+ */
+export const getAllDentists = async (req, res) => {
+  try {
+    // Get all users with dentist role
+    const dentists = await User.findByRole('dentist')
+
+    res.json({
+      success: true,
+      dentists,
+    })
+  } catch (error) {
+    console.error('Get all dentists error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}

@@ -381,6 +381,44 @@ class User {
       throw error
     }
   }
+
+  /**
+   * Find users by role
+   * @param {string} role - User role to find (e.g., 'dentist')
+   * @returns {Array} - Array of user objects
+   */
+  static async findByRole(role) {
+    try {
+      const pool = getPool()
+
+      // If querying for dentists, join with the dentists table to get specialization
+      if (role === 'dentist') {
+        const [rows] = await pool.query(
+          `
+          SELECT u.id, u.name, u.email, u.phone, u.role, d.specialization, d.bio 
+          FROM users u
+          LEFT JOIN dentists d ON u.id = d.user_id
+          WHERE u.role = ?
+          ORDER BY u.name
+        `,
+          [role]
+        )
+
+        return rows
+      } else {
+        // For other roles, just query the users table
+        const [rows] = await pool.query(
+          'SELECT id, name, email, phone, role, created_at FROM users WHERE role = ?',
+          [role]
+        )
+
+        return rows
+      }
+    } catch (error) {
+      console.error('Error finding users by role:', error)
+      throw error
+    }
+  }
 }
 
 export default User

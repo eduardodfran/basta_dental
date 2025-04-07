@@ -445,6 +445,51 @@
   color: #dc3545;
 }
 
+/* View toggle button */
+#view-toggle {
+  margin-left: 10px;
+  background-color: #6c757d;
+  color: white;
+}
+
+#view-toggle.viewing-all {
+  background-color: #1a73e8;
+}
+
+.view-mode {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+
+/* Other dentist appointment styles */
+.other-dentist-appointment {
+  background-color: #f8f9fa;
+  border-left: 4px solid #ffc107;
+}
+
+.dentist-tag {
+  display: inline-block;
+  background-color: #e9ecef;
+  color: #495057;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 12px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+/* Assign button specific style */
+.btn-assign {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-assign:hover {
+  background-color: #218838;
+}
+
 /* Responsive design */
 @media screen and (max-width: 992px) {
   .availability-container {

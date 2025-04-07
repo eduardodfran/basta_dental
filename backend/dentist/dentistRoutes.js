@@ -5,6 +5,7 @@ import {
   getAvailability,
   updatePatientNotes,
   getPatientNotes,
+  getAllDentists,
 } from './dentistController.js'
 
 const router = express.Router()
@@ -15,5 +16,6 @@ router.get('/availability/:userId', getAvailability)
 router.post('/availability/:userId', setAvailability)
 router.post('/notes/:userId', updatePatientNotes)
 router.get('/notes/:userId/:patientId', getPatientNotes)
+router.get('/all', getAllDentists) // Add new route to get all dentists
 
 export default router

@@ -6,10 +6,34 @@ document.addEventListener('DOMContentLoaded', function () {
     return // Stop execution if not authenticated
   }
 
+  // Make sure user can book appointments (not a dentist)
+  if (user.role === 'dentist') {
+    console.error('Dentists cannot book appointments. Redirecting...')
+    showNotificationDialog(
+      'As a dentist, you cannot book appointments. Please use your dentist dashboard.',
+      'Access Restricted',
+      () => window.location.replace('dentist-dashboard.html')
+    )
+    return
+  }
+
   // Initialize variables
   let currentStep = 1
   let selectedTimeSlot = null
   let selectedDate = null
+  let selectedService = 'General Checkup' // Default service
+  let selectedPaymentMethod = 'online' // Default to online payment for new users
+  let isTrustedPatient = false // Default to false until we check
+
+  // Define downpayment amounts for different services
+  const DOWNPAYMENT_AMOUNTS = {
+    'General Checkup': 200,
+    'Teeth Cleaning': 500,
+    'Teeth Whitening': 1000,
+    'Dental Filling': 500,
+    'Root Canal': 1000,
+    'Tooth Extraction': 500,
+  }
 
   // Available time slots (24-hour format)
   const timeSlots = [
@@ -32,6 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // API endpoint
   const API_URL = 'http://localhost:3000/api/appointments'
+  const DENTIST_API_URL = 'http://localhost:3000/api/dentist/all'
 
   // Elements
   const progressSteps = document.querySelectorAll('.progress-step')
@@ -45,41 +70,93 @@ document.addEventListener('DOMContentLoaded', function () {
   const dateNextBtn = document.getElementById('date-next-btn')
   const logoutBtn = document.getElementById('logout-btn')
 
-  // Set minimum date to today
+  // Set minimum date to today and maximum date to a reasonable future date (1 year)
   const today = new Date()
   const yyyy = today.getFullYear()
   const mm = String(today.getMonth() + 1).padStart(2, '0')
   const dd = String(today.getDate()).padStart(2, '0')
   const formattedToday = `${yyyy}-${mm}-${dd}`
+
+  // Set maximum date to 1 year from now to prevent typos like '20205'
+  const maxDate = new Date()
+  maxDate.setFullYear(maxDate.getFullYear() + 1)
+  const maxYyyy = maxDate.getFullYear()
+  const maxMm = String(maxDate.getMonth() + 1).padStart(2, '0')
+  const maxDd = String(maxDate.getDate()).padStart(2, '0')
+  const formattedMaxDate = `${maxYyyy}-${maxMm}-${maxDd}`
+
   dateInput.min = formattedToday
+  dateInput.max = formattedMaxDate
 
   // Initialize navbar
   initNavbarToggle()
+  loadDentists() // Add this line to load dentists
+
+  // Check if user is a returning/trusted patient
+  checkUserTrustStatus(user.id)
 
   // Event Listeners
   nextButtons.forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', (e) => {
+      e.preventDefault() // Prevent default button behavior
       goToNextStep()
     })
   })
 
   prevButtons.forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', (e) => {
+      e.preventDefault() // Prevent default button behavior
       goToPrevStep()
     })
   })
 
   dateInput.addEventListener('change', function () {
-    selectedDate = this.value
+    const inputDate = this.value
+
+    // Additional validation to prevent typos like '20205'
+    if (inputDate) {
+      const dateObj = new Date(inputDate)
+      const currentYear = new Date().getFullYear()
+      const today = new Date()
+      today.setHours(0, 0, 0, 0) // Reset time portion for date comparison
+      dateObj.setHours(0, 0, 0, 0)
+
+      if (isNaN(dateObj.getTime()) || dateObj.getFullYear() > currentYear + 5) {
+        showToast('Please select a valid date', TOAST_LEVELS.ERROR)
+        this.value = ''
+        selectedDate = null
+        return
+      }
+
+      // Check if date is in the past
+      if (dateObj < today) {
+        showToast('Cannot book appointments for past dates', TOAST_LEVELS.ERROR)
+        this.value = ''
+        selectedDate = null
+        return
+      }
+
+      selectedDate = inputDate
+      loadAvailableTimeSlots(selectedDate)
+    } else {
+      selectedDate = null
+      // Clear time slots if date is cleared
+      timeSlotContainer.innerHTML =
+        '<p class="no-slots-message">Please select a date to see available time slots</p>'
+    }
+
+    // Reset time slot selection when date changes
     selectedTimeSlot = null
-    loadAvailableTimeSlots(selectedDate)
     updateSummary()
     dateNextBtn.disabled = !selectedTimeSlot
   })
 
   // Service selection change
   document.querySelectorAll('input[name="service"]').forEach((radio) => {
-    radio.addEventListener('change', updateSummary)
+    radio.addEventListener('change', function () {
+      selectedService = this.value
+      updateSummary()
+    })
   })
 
   // Dentist selection change
@@ -88,6 +165,23 @@ document.addEventListener('DOMContentLoaded', function () {
       loadAvailableTimeSlots(selectedDate)
     }
     updateSummary()
+  })
+
+  // Payment method selection
+  document.querySelectorAll('input[name="payment-method"]').forEach((radio) => {
+    radio.addEventListener('change', function () {
+      selectedPaymentMethod = this.value
+      updateSummary()
+
+      // Toggle visibility of online payment instructions
+      const onlineInstructions = document.getElementById(
+        'online-payment-instructions'
+      )
+      if (onlineInstructions) {
+        onlineInstructions.style.display =
+          selectedPaymentMethod === 'online' ? 'block' : 'none'
+      }
+    })
   })
 
   // Form submission
@@ -106,10 +200,24 @@ document.addEventListener('DOMContentLoaded', function () {
       return
     }
 
+    // Additional validation for date (check if it's not in the past)
+    const selectedDateObj = new Date(selectedDate)
+    const today = new Date()
+    selectedDateObj.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
+
+    if (selectedDateObj < today) {
+      showBookingStatus('Cannot book appointments for past dates', 'error')
+      return
+    }
+
     // Show loading status
     showBookingStatus('Processing your booking...', 'info')
 
-    // Prepare appointment data
+    // Get downpayment amount based on selected service
+    const downpaymentAmount = DOWNPAYMENT_AMOUNTS[service] || 500
+
+    // Prepare appointment data with downpayment information
     const appointmentData = {
       userId: user.id,
       service,
@@ -117,6 +225,9 @@ document.addEventListener('DOMContentLoaded', function () {
       date: selectedDate,
       time: selectedTimeSlot,
       notes,
+      downpaymentAmount,
+      downpaymentStatus: 'pending', // Default status
+      paymentMethod: selectedPaymentMethod,
     }
 
     // Send data to the server
@@ -134,7 +245,23 @@ document.addEventListener('DOMContentLoaded', function () {
         return response.json()
       })
       .then((data) => {
-        showBookingSuccess(data)
+        if (selectedPaymentMethod === 'online') {
+          // If online payment is selected, redirect to payment page
+          localStorage.setItem(
+            'pendingAppointment',
+            JSON.stringify({
+              appointmentId: data.appointment.id,
+              service: service,
+              amount: downpaymentAmount,
+              date: selectedDate,
+              time: selectedTimeSlot,
+              dentist: dentist,
+            })
+          )
+          window.location.href = 'payment.html'
+        } else {
+          showBookingSuccess(data)
+        }
       })
       .catch((error) => {
         showBookingStatus('Error: ' + error.message, 'error')
@@ -150,14 +277,18 @@ document.addEventListener('DOMContentLoaded', function () {
   // Functions
   function goToNextStep() {
     // Validate current step before proceeding
-    if (currentStep === 1 && !document.getElementById('dentist').value) {
-      alert('Please select a dentist')
-      return
-    }
-
-    if (currentStep === 2 && !selectedTimeSlot) {
-      alert('Please select a time slot')
-      return
+    if (currentStep === 1) {
+      if (!document.getElementById('dentist').value) {
+        showToast('Please select a dentist', TOAST_LEVELS.WARNING)
+        return
+      }
+      // Step 1 is valid, proceed
+    } else if (currentStep === 2) {
+      if (!selectedTimeSlot) {
+        showToast('Please select a time slot', TOAST_LEVELS.WARNING)
+        return
+      }
+      // Step 2 is valid, proceed
     }
 
     // Hide current step
@@ -226,6 +357,21 @@ document.addEventListener('DOMContentLoaded', function () {
       return
     }
 
+    // Validate date format to prevent issues with backend
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+    if (!dateRegex.test(date)) {
+      timeSlotContainer.innerHTML =
+        '<p class="no-slots-message error-message">Invalid date format. Please select a date from the calendar.</p>'
+      return
+    }
+
+    const dateObj = new Date(date)
+    if (isNaN(dateObj.getTime())) {
+      timeSlotContainer.innerHTML =
+        '<p class="no-slots-message error-message">Invalid date. Please select a valid date.</p>'
+      return
+    }
+
     const dentist = document.getElementById('dentist').value
     if (!dentist) {
       timeSlotContainer.innerHTML =
@@ -257,7 +403,7 @@ document.addEventListener('DOMContentLoaded', function () {
       .catch((error) => {
         console.error('Error loading time slots:', error)
         timeSlotContainer.innerHTML =
-          '<p class="no-slots-message error-message">Error loading time slots. Please try again.</p>'
+          '<p class="no-slots-message error-message">Error loading time slots. Please try again or select another date.</p>'
       })
   }
 
@@ -310,6 +456,9 @@ document.addEventListener('DOMContentLoaded', function () {
     ).value
     const dentist = document.getElementById('dentist').value || 'Not selected'
 
+    // Get downpayment amount
+    const downpaymentAmount = DOWNPAYMENT_AMOUNTS[service] || 500
+
     // Update summary section
     document.getElementById('summary-service').textContent = service
     document.getElementById('summary-dentist').textContent = dentist
@@ -319,16 +468,46 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('summary-time').textContent = selectedTimeSlot
       ? formatTime(selectedTimeSlot)
       : 'Not selected'
+
+    // Add downpayment information to summary
+    document.getElementById(
+      'summary-downpayment'
+    ).textContent = `₱${downpaymentAmount}.00`
+
+    // Update payment method if available in summary
+    const summaryPaymentMethod = document.getElementById(
+      'summary-payment-method'
+    )
+    if (summaryPaymentMethod) {
+      let paymentText =
+        selectedPaymentMethod === 'clinic'
+          ? 'Pay at clinic before appointment'
+          : 'Online payment (proceed after booking)'
+      summaryPaymentMethod.textContent = paymentText
+    }
   }
 
   function formatDate(dateString) {
+    // Create a date object with Philippine timezone in mind
+    const [year, month, day] = dateString
+      .split('-')
+      .map((num) => parseInt(num, 10))
+
+    // Use the proper date string format with Philippine timezone (+08:00)
+    const date = new Date(
+      `${year}-${month.toString().padStart(2, '0')}-${day
+        .toString()
+        .padStart(2, '0')}T00:00:00+08:00`
+    )
+
     const options = {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+      timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
     }
-    return new Date(dateString).toLocaleDateString(undefined, options)
+    return date.toLocaleDateString(undefined, options)
   }
 
   function formatTime(timeString) {
@@ -337,21 +516,45 @@ document.addEventListener('DOMContentLoaded', function () {
     const hour = parseInt(hours)
     const ampm = hour >= 12 ? 'PM' : 'AM'
     const hour12 = hour % 12 || 12 // Convert 0 to 12 for 12 AM
-
     return `${hour12}:${minutes} ${ampm}`
   }
 
   function showBookingStatus(message, type) {
     const statusElement = document.getElementById('booking-status')
-    statusElement.textContent = message
+    statusElement.innerHTML = message // Changed from textContent to innerHTML
     statusElement.className = 'booking-status'
     statusElement.classList.add(type)
   }
 
   function showBookingSuccess(data) {
-    // Show success message
+    // Get downpayment amount
+    const service = document.querySelector(
+      'input[name="service"]:checked'
+    ).value
+    const downpaymentAmount = DOWNPAYMENT_AMOUNTS[service] || 500
+    const paymentMethod = selectedPaymentMethod
+
+    let paymentInstructions = ''
+    if (paymentMethod === 'clinic') {
+      paymentInstructions = `
+        <div class="important-note">
+          <i class="fas fa-info-circle"></i>
+          Please note: A downpayment of ₱${downpaymentAmount}.00 is required to confirm your appointment.
+          <br>Please arrive 15 minutes before your appointment to process the payment at our clinic.
+        </div>
+      `
+    } else {
+      paymentInstructions = `
+        <div class="important-note">
+          <i class="fas fa-info-circle"></i>
+          You will be redirected to our payment page to complete your downpayment of ₱${downpaymentAmount}.00.
+        </div>
+      `
+    }
+
+    // Show success message with downpayment information
     showBookingStatus(
-      'Your appointment has been booked successfully!',
+      `Your appointment has been booked successfully!<br>${paymentInstructions}`,
       'success'
     )
 
@@ -387,6 +590,197 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelector('.nav-links').classList.toggle('nav-active')
         burger.classList.toggle('toggle')
       })
+    }
+  }
+
+  // Load available dentists from the database
+  function loadDentists() {
+    const dentistSelect = document.getElementById('dentist')
+
+    // Show loading option
+    dentistSelect.innerHTML = '<option value="">Loading dentists...</option>'
+
+    fetch(DENTIST_API_URL)
+      .then((response) => {
+        if (!response.ok) {
+          const error = new Error(`HTTP error! Status: ${response.status}`)
+          error.status = response.status
+          throw error
+        }
+        return response.json()
+      })
+      .then((data) => {
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to load dentists')
+        }
+
+        // Clear loading option
+        dentistSelect.innerHTML =
+          '<option value="">Choose a dentist...</option>'
+
+        // Add dentists from the database
+        if (data.dentists && data.dentists.length > 0) {
+          data.dentists.forEach((dentist) => {
+            const option = document.createElement('option')
+            option.value = dentist.name
+
+            // Add specialization if available
+            let optionText = dentist.name
+            if (dentist.specialization) {
+              optionText += ` (${dentist.specialization})`
+            }
+
+            option.textContent = optionText
+            dentistSelect.appendChild(option)
+          })
+        } else {
+          // If no dentists found
+          dentistSelect.innerHTML =
+            '<option value="">No dentists available</option>'
+        }
+      })
+      .catch((error) => {
+        console.error('Error loading dentists:', error)
+        dentistSelect.innerHTML =
+          '<option value="">Error loading dentists</option>'
+
+        // More informative error message
+        const errorMessage = error.status
+          ? `Server error (${error.status})`
+          : error.message || 'Network error'
+
+        showToast(`Error loading dentists: ${errorMessage}`, TOAST_LEVELS.ERROR)
+      })
+  }
+
+  /**
+   * Check if user is a returning/trusted patient
+   * @param {number} userId - User ID to check
+   */
+  function checkUserTrustStatus(userId) {
+    // Show loading state for payment options
+    togglePaymentOptionsLoading(true)
+
+    // Fetch user's past appointments to determine if they're a returning patient
+    fetch(`http://localhost:3000/api/appointments/user/${userId}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch user appointment history')
+        }
+        return response.json()
+      })
+      .then((data) => {
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to check user history')
+        }
+
+        // Check if user has any completed appointments
+        const completedAppointments = data.appointments.filter(
+          (apt) => apt.status === 'completed'
+        )
+
+        isTrustedPatient = completedAppointments.length > 0
+
+        // Configure payment options based on trust status
+        configurePaymentOptions(isTrustedPatient)
+
+        // Hide loading state
+        togglePaymentOptionsLoading(false)
+      })
+      .catch((error) => {
+        console.error('Error checking user trust status:', error)
+        // Default to treating as new patient if there's an error
+        configurePaymentOptions(false)
+        togglePaymentOptionsLoading(false)
+      })
+  }
+
+  /**
+   * Configure payment options based on user trust status
+   * @param {boolean} isTrusted - Whether the user is a trusted patient
+   */
+  function configurePaymentOptions(isTrusted) {
+    const clinicPaymentOption = document.getElementById('payment-clinic')
+    const clinicPaymentLabel = document.querySelector(
+      'label[for="payment-clinic"]'
+    )
+    const paymentNotice = document.getElementById('payment-restriction-notice')
+
+    if (!isTrusted) {
+      // For new patients, disable clinic payment and select online payment
+      clinicPaymentOption.disabled = true
+      clinicPaymentOption.checked = false
+
+      // Add visual indication that the option is disabled
+      clinicPaymentLabel.classList.add('disabled-option')
+
+      // Select online payment by default
+      document.getElementById('payment-online').checked = true
+      selectedPaymentMethod = 'online'
+
+      // Show notice explaining why clinic payment is disabled
+      if (paymentNotice) {
+        paymentNotice.style.display = 'block'
+      } else {
+        // Create notice if it doesn't exist
+        const notice = document.createElement('div')
+        notice.id = 'payment-restriction-notice'
+        notice.className = 'payment-restriction-notice'
+        notice.innerHTML = `
+          <i class="fas fa-info-circle"></i>
+          <p>"Pay at Clinic" is only available for returning patients. As a new patient, 
+          please secure your appointment with an online payment.</p>
+        `
+
+        // Insert after payment options
+        document
+          .querySelector('.payment-options')
+          .insertAdjacentElement('afterend', notice)
+      }
+
+      // Show online payment instructions
+      const onlineInstructions = document.getElementById(
+        'online-payment-instructions'
+      )
+      if (onlineInstructions) {
+        onlineInstructions.style.display = 'block'
+      }
+    } else {
+      // For returning patients, enable all payment options
+      clinicPaymentOption.disabled = false
+      clinicPaymentLabel.classList.remove('disabled-option')
+
+      // Hide the restriction notice if it exists
+      if (paymentNotice) {
+        paymentNotice.style.display = 'none'
+      }
+    }
+
+    // Update summary with selected payment method
+    updateSummary()
+  }
+
+  /**
+   * Toggle loading state for payment options
+   * @param {boolean} isLoading - Whether the payment options are loading
+   */
+  function togglePaymentOptionsLoading(isLoading) {
+    const paymentSection = document.querySelector('.payment-method-section')
+
+    if (isLoading) {
+      // Add loading overlay
+      paymentSection.classList.add('loading')
+      paymentSection.insertAdjacentHTML(
+        'afterbegin',
+        '<div class="loading-overlay"><i class="fas fa-spinner fa-spin"></i> Checking account status...</div>'
+      )
+    } else {
+      // Remove loading overlay
+      paymentSection.classList.remove('loading')
+      const overlay = paymentSection.querySelector('.loading-overlay')
+      if (overlay) {
+        overlay.remove()
+      }
     }
   }
 })

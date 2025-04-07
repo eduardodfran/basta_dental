@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BastaDental - Login</title>
     <link rel="stylesheet" href="login.css" />
-    <lin
+    <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
     />
+    <!-- Add notification system first -->
+    <script src="js/notifications.js"></script>
     <!-- Add auth.js before main script -->
     <script src="js/auth.js"></script>
     <script>
@@ -57,6 +59,65 @@
       document.addEventListener('DOMContentLoaded', function () {
         // This will redirect to dashboard if user is already logged in
         redirectIfLoggedIn()
+
+        // Existing login form handler
+        document
+          .getElementById('login-form')
+          .addEventListener('submit', function (e) {
+            e.preventDefault()
+
+            // Get form data
+            const email = document.getElementById('login-email').value.trim()
+            const password = document
+              .getElementById('login-password')
+              .value.trim()
+            const feedbackElement = document.getElementById('feedback-message')
+
+            // Basic validation
+            if (!email || !password) {
+              feedbackElement.textContent = 'Please fill in all fields'
+              feedbackElement.className = 'feedback-message error'
+              return
+            }
+
+            // Show loading message
+            feedbackElement.textContent = 'Authenticating...'
+            feedbackElement.className = 'feedback-message info'
+
+            // Send login request to API
+            fetch('http://localhost:3000/api/users/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, password }),
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                if (data.success) {
+                  // Store user data in localStorage
+                  localStorage.setItem('user', JSON.stringify(data.user))
+
+                  feedbackElement.textContent =
+                    'Login successful! Redirecting...'
+                  feedbackElement.className = 'feedback-message success'
+
+                  // Redirect based on user role
+                  setTimeout(() => {
+                    // Use the new redirectBasedOnRole function to handle redirection
+                    redirectBasedOnRole()
+                  }, 500)
+                } else {
+                  feedbackElement.textContent =
+                    data.message || 'Login failed. Check your credentials.'
+                  feedbackElement.className = 'feedback-message error'
+                }
+              })
+              .catch((error) => {
+                console.error('Login error:', error)
+                feedbackElement.textContent =
+                  'Server error. Please try again later.'
+                feedbackElement.className = 'feedback-message error'
+              })
+          })
       })
     </script>
     <script src="js/user.js"></script>

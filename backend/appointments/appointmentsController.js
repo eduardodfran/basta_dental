@@ -15,6 +15,37 @@ export const createAppointment = async (req, res) => {
       })
     }
 
+    // Validate date format and prevent past dates
+    try {
+      // Create date objects for comparison
+      const appointmentDate = new Date(date)
+      appointmentDate.setHours(0, 0, 0, 0) // Reset time for date comparison
+
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      // Check if date is valid
+      if (isNaN(appointmentDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid appointment date format',
+        })
+      }
+
+      // Check if date is in the past
+      if (appointmentDate < today) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot book appointments for past dates',
+        })
+      }
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid appointment date',
+      })
+    }
+
     // Check if time slot is available
     const isAvailable = await Appointment.isTimeSlotAvailable(
       date,
@@ -62,9 +93,19 @@ export const getUserAppointments = async (req, res) => {
 
     const appointments = await Appointment.findByUserId(userId)
 
+    // Count completed appointments for checking if user is trusted
+    const completedAppointments = appointments.filter(
+      (apt) => apt.status === 'completed'
+    ).length
+    const isTrustedPatient = completedAppointments > 0
+
     res.json({
       success: true,
       appointments,
+      patientStatus: {
+        completedAppointments,
+        isTrusted: isTrustedPatient,
+      },
     })
   } catch (error) {
     console.error('Get user appointments error:', error)
@@ -144,6 +185,37 @@ export const rescheduleAppointment = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'New date and time are required',
+      })
+    }
+
+    // Validate date format and prevent past dates
+    try {
+      // Create date objects for comparison
+      const appointmentDate = new Date(date)
+      appointmentDate.setHours(0, 0, 0, 0) // Reset time for date comparison
+
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      // Check if date is valid
+      if (isNaN(appointmentDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid appointment date format',
+        })
+      }
+
+      // Check if date is in the past
+      if (appointmentDate < today) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot reschedule to a past date',
+        })
+      }
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid appointment date',
       })
     }
 
@@ -234,6 +306,26 @@ export const getAppointmentById = async (req, res) => {
       })
     }
 
+    // Validate and standardize date format if present
+    if (appointment.date) {
+      try {
+        // Test if the date is valid
+        const testDate = new Date(appointment.date)
+        if (isNaN(testDate.getTime())) {
+          // If invalid, provide a standardized format in the response
+          console.warn(
+            `Invalid appointment date detected for ID ${appointmentId}: ${appointment.date}`
+          )
+          // Keep the original date in case client has special handling
+        }
+      } catch (err) {
+        console.error(
+          `Error processing date for appointment ${appointmentId}:`,
+          err
+        )
+      }
+    }
+
     res.json({
       success: true,
       appointment,
@@ -284,6 +376,134 @@ export const updateAppointmentStatus = async (req, res) => {
     })
   } catch (error) {
     console.error('Update appointment status error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Assign appointment to a different dentist
+ */
+export const assignAppointment = async (req, res) => {
+  try {
+    const appointmentId = req.params.id
+    const { dentistName, dentistId } = req.body
+
+    // Validate input
+    if (!dentistName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Dentist name is required',
+      })
+    }
+
+    // Check if appointment exists
+    const appointment = await Appointment.findById(appointmentId)
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      })
+    }
+
+    // Update appointment with new dentist
+    const updatedAppointment = await Appointment.assignToDentist(
+      appointmentId,
+      dentistName,
+      dentistId
+    )
+
+    res.json({
+      success: true,
+      message: 'Appointment assigned successfully',
+      appointment: updatedAppointment,
+    })
+  } catch (error) {
+    console.error('Assign appointment error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Update payment status for an appointment
+ */
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const appointmentId = req.params.id
+    const { downpaymentStatus, paymentMethod } = req.body
+
+    // Validate input
+    if (!downpaymentStatus || !paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: 'Downpayment status and payment method are required',
+      })
+    }
+
+    // Check if appointment exists
+    const appointment = await Appointment.findById(appointmentId)
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      })
+    }
+
+    // Update appointment with new payment information
+    const updatedAppointment = await Appointment.updatePayment(
+      appointmentId,
+      downpaymentStatus,
+      paymentMethod
+    )
+
+    res.json({
+      success: true,
+      message: 'Payment information updated successfully',
+      appointment: updatedAppointment,
+    })
+  } catch (error) {
+    console.error('Update payment status error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Update payment method for an appointment
+ */
+export const updatePaymentMethod = async (req, res) => {
+  try {
+    const appointmentId = req.params.id
+    const { paymentMethod } = req.body
+
+    // Validate input
+    if (!paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment method is required',
+      })
+    }
+
+    // Check if appointment exists
+    const appointment = await Appointment.findById(appointmentId)
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      })
+    }
+
+    // Update appointment with new payment method
+    const updatedAppointment = await Appointment.updatePaymentMethod(
+      appointmentId,
+      paymentMethod
+    )
+
+    res.json({
+      success: true,
+      message: 'Payment method updated successfully',
+      appointment: updatedAppointment,
+    })
+  } catch (error) {
+    console.error('Update payment method error:', error)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }

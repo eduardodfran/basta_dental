@@ -80,31 +80,50 @@ function loadAppointments() {
 
         // Add appointments to table
         appointments.forEach((apt) => {
-          // Format date for display
-          const dateObj = new Date(apt.date)
-          // Add 1 day to compensate for potential timezone issue
-          const timezoneOffset = new Date().getTimezoneOffset()
-          if (timezoneOffset > 0) {
-            dateObj.setDate(dateObj.getDate() + 1)
-          }
+          // Format date for display with proper handling
+          let formattedDate = 'Invalid date'
 
-          const formattedDate = dateObj.toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })
+          try {
+            // Ensure we have a valid date string
+            if (apt.date) {
+              // Add time component with explicit Philippine timezone if not present
+              const dateStr = apt.date.includes('T')
+                ? apt.date
+                : `${apt.date}T00:00:00+08:00`
+
+              const dateObj = new Date(dateStr)
+
+              // Check if date is valid before formatting
+              if (!isNaN(dateObj.getTime())) {
+                formattedDate = dateObj.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
+                })
+              }
+            }
+          } catch (err) {
+            console.error('Error formatting appointment date:', err)
+            formattedDate = apt.date || 'Unknown date'
+          }
 
           // Format time if available
           let formattedTime = 'N/A'
           if (apt.time) {
-            const [hours, minutes] = apt.time.split(':')
-            const timeObj = new Date()
-            timeObj.setHours(hours, minutes, 0)
-            formattedTime = timeObj.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+            try {
+              const [hours, minutes] = apt.time.split(':')
+              const timeObj = new Date()
+              timeObj.setHours(hours, minutes, 0)
+              formattedTime = timeObj.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            } catch (err) {
+              console.error('Error formatting appointment time:', err)
+              formattedTime = apt.time || 'N/A'
+            }
           }
 
           const row = document.createElement('tr')
@@ -335,31 +354,50 @@ function openAppointmentModal(appointmentId) {
 
       const apt = data.appointment
 
-      // Format date for display
-      const dateObj = new Date(apt.date)
-      // Adjust for timezone if needed
-      const timezoneOffset = new Date().getTimezoneOffset()
-      if (timezoneOffset > 0) {
-        dateObj.setDate(dateObj.getDate() + 1)
-      }
+      // Format date for display - using Philippine timezone
+      let formattedDate = 'Invalid date'
 
-      const formattedDate = dateObj.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
+      try {
+        // Ensure we have a valid date string with Philippines timezone
+        if (apt.date) {
+          // Add time component with explicit Philippine timezone if not present
+          const dateStr = apt.date.includes('T')
+            ? apt.date
+            : `${apt.date}T00:00:00+08:00`
+
+          const dateObj = new Date(dateStr)
+
+          // Check if date is valid before formatting
+          if (!isNaN(dateObj.getTime())) {
+            formattedDate = dateObj.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Error formatting appointment date:', err)
+        formattedDate = apt.date || 'Unknown date'
+      }
 
       // Format time if available
       let formattedTime = 'N/A'
       if (apt.time) {
-        const [hours, minutes] = apt.time.split(':')
-        const timeObj = new Date()
-        timeObj.setHours(hours, minutes, 0)
-        formattedTime = timeObj.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
+        try {
+          const [hours, minutes] = apt.time.split(':')
+          const timeObj = new Date()
+          timeObj.setHours(hours, minutes, 0)
+          formattedTime = timeObj.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        } catch (err) {
+          console.error('Error formatting appointment time:', err)
+          formattedTime = apt.time || 'N/A'
+        }
       }
 
       // Populate details
@@ -477,27 +515,51 @@ function openUserModal(userId) {
       // Format date of birth if available
       let formattedDob = 'Not provided'
       if (user.dob) {
-        const dobDate = new Date(user.dob)
-        // Adjust for timezone if needed
-        const timezoneOffset = new Date().getTimezoneOffset()
-        if (timezoneOffset > 0) {
-          dobDate.setDate(dobDate.getDate() + 1)
+        try {
+          // Add time component with explicit Philippine timezone if not present
+          const dobStr = user.dob.includes('T')
+            ? user.dob
+            : `${user.dob}T00:00:00+08:00`
+
+          const dobDate = new Date(dobStr)
+
+          // Check if date is valid before formatting
+          if (!isNaN(dobDate.getTime())) {
+            formattedDob = dobDate.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
+            })
+          }
+        } catch (err) {
+          console.error('Error formatting date of birth:', err)
+          formattedDob = user.dob || 'Not provided'
         }
-        formattedDob = dobDate.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })
       }
 
       // Format join date
-      const joinDate = new Date(user.created_at)
-      const formattedJoinDate = joinDate.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
+      let formattedJoinDate = 'Unknown'
+      try {
+        const joinStr = user.created_at.includes('T')
+          ? user.created_at
+          : `${user.created_at}T00:00:00+08:00`
+
+        const joinDate = new Date(joinStr)
+
+        if (!isNaN(joinDate.getTime())) {
+          formattedJoinDate = joinDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
+          })
+        }
+      } catch (err) {
+        console.error('Error formatting join date:', err)
+        formattedJoinDate = user.created_at || 'Unknown'
+      }
 
       // Populate details
       detailsContainer.innerHTML = `
@@ -567,29 +629,48 @@ function openUserModal(userId) {
 
         // Add appointments to list
         appointments.forEach((apt) => {
-          const dateObj = new Date(apt.date)
-          // Adjust for timezone if needed
-          const timezoneOffset = new Date().getTimezoneOffset()
-          if (timezoneOffset > 0) {
-            dateObj.setDate(dateObj.getDate() + 1)
-          }
+          // Format date properly with explicit Philippine timezone
+          let formattedDate = 'Invalid date'
 
-          const formattedDate = dateObj.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })
+          try {
+            if (apt.date) {
+              // Add time component with explicit Philippine timezone if not present
+              const dateStr = apt.date.includes('T')
+                ? apt.date
+                : `${apt.date}T00:00:00+08:00`
+
+              const dateObj = new Date(dateStr)
+
+              // Check if date is valid before formatting
+              if (!isNaN(dateObj.getTime())) {
+                formattedDate = dateObj.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
+                })
+              }
+            }
+          } catch (err) {
+            console.error('Error formatting user appointment date:', err)
+            formattedDate = apt.date || 'Unknown date'
+          }
 
           // Format time if available
           let formattedTime = 'N/A'
           if (apt.time) {
-            const [hours, minutes] = apt.time.split(':')
-            const timeObj = new Date()
-            timeObj.setHours(hours, minutes, 0)
-            formattedTime = timeObj.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+            try {
+              const [hours, minutes] = apt.time.split(':')
+              const timeObj = new Date()
+              timeObj.setHours(hours, minutes, 0)
+              formattedTime = timeObj.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            } catch (err) {
+              console.error('Error formatting user appointment time:', err)
+              formattedTime = apt.time || 'N/A'
+            }
           }
 
           const item = document.createElement('div')
@@ -652,6 +733,90 @@ function openRoleModal(userId) {
 
 // Update appointment status
 function updateAppointmentStatus(appointmentId, status) {
+  // If cancelling, check date first
+  if (status === 'cancelled') {
+    // For admin, we'll still allow cancellation but show a warning for same-day appointments
+    fetch(`http://localhost:3000/api/appointments/${appointmentId}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch appointment details')
+        }
+        return response.json()
+      })
+      .then((data) => {
+        if (!data.success || !data.appointment) {
+          throw new Error('Failed to retrieve appointment information')
+        }
+
+        const appointment = data.appointment
+
+        // Create date objects with proper timezone handling
+        let appointmentDate
+
+        try {
+          if (appointment.date) {
+            // Add time component with explicit Philippine timezone if not present
+            const dateStr = appointment.date.includes('T')
+              ? appointment.date
+              : `${appointment.date}T00:00:00+08:00`
+
+            appointmentDate = new Date(dateStr)
+
+            // If date is invalid, throw error
+            if (isNaN(appointmentDate.getTime())) {
+              throw new Error('Invalid appointment date')
+            }
+          } else {
+            throw new Error('Missing appointment date')
+          }
+
+          const today = new Date()
+
+          // Set both to midnight for date comparison only
+          appointmentDate.setHours(0, 0, 0, 0)
+          today.setHours(0, 0, 0, 0)
+
+          // For admins, show warning but allow the cancellation
+          if (appointmentDate.getTime() <= today.getTime()) {
+            showConfirmDialog(
+              '<b>Warning:</b> This is a same-day or past appointment cancellation. The patient may need to be notified immediately.<br><br>Are you sure you want to proceed?',
+              () => processStatusUpdate(appointmentId, status),
+              null,
+              'Proceed with Cancellation',
+              'Go Back'
+            )
+            return
+          }
+
+          // If not same-day, proceed normally
+          showConfirmDialog(
+            `Are you sure you want to cancel this appointment?<br><br>
+            <div class="downpayment-notice">
+              <i class="fas fa-info-circle"></i> Remember to handle any downpayment refunds if applicable.
+            </div>`,
+            () => processStatusUpdate(appointmentId, status)
+          )
+        } catch (err) {
+          console.error('Error validating appointment date:', err)
+          showToast(
+            `Error validating appointment date: ${err.message}`,
+            TOAST_LEVELS.ERROR
+          )
+          return
+        }
+      })
+      .catch((error) => {
+        console.error('Error checking appointment date:', error)
+        showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+      })
+  } else {
+    // For non-cancellation status updates, proceed normally
+    processStatusUpdate(appointmentId, status)
+  }
+}
+
+// Helper function to process the actual status update
+function processStatusUpdate(appointmentId, status) {
   fetch(`http://localhost:3000/api/appointments/${appointmentId}/status`, {
     method: 'PUT',
     headers: {
@@ -681,11 +846,12 @@ function updateAppointmentStatus(appointmentId, status) {
 
       // Close modal and reload appointments
       closeModal('appointment-modal')
+      showToast(`Appointment ${status} successfully!`, TOAST_LEVELS.SUCCESS)
       loadAppointments()
     })
     .catch((error) => {
       console.error('Error updating appointment status:', error)
-      alert(`Error: ${error.message}`)
+      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
     })
 }
 
@@ -763,15 +929,34 @@ function filterAppointments() {
     // Filter by date
     if (dateFilter && showRow) {
       const dateCell = row.querySelector('td:nth-child(4)').textContent
-      const rowDate = new Date(dateCell.split('at')[0].trim())
-      const filterDate = new Date(dateFilter)
 
-      // Compare year, month, and day
-      if (
-        rowDate.getFullYear() !== filterDate.getFullYear() ||
-        rowDate.getMonth() !== filterDate.getMonth() ||
-        rowDate.getDate() !== filterDate.getDate()
-      ) {
+      // Extract just the date part from the cell text which might include time
+      const datePart = dateCell.split('<br>')[0].trim()
+
+      try {
+        // Add time component with Philippines timezone
+        const dateStr = `${dateFilter}T00:00:00+08:00`
+        const filterDate = new Date(dateStr)
+
+        // Create date object for row date with Philippines timezone
+        const rowDateStr = `${datePart}T00:00:00+08:00`
+        const rowDate = new Date(rowDateStr)
+
+        if (isNaN(rowDate.getTime()) || isNaN(filterDate.getTime())) {
+          // If either date is invalid, don't show the row
+          showRow = false
+        } else {
+          // Just compare the date parts (year, month, day)
+          if (
+            rowDate.getFullYear() !== filterDate.getFullYear() ||
+            rowDate.getMonth() !== filterDate.getMonth() ||
+            rowDate.getDate() !== filterDate.getDate()
+          ) {
+            showRow = false
+          }
+        }
+      } catch (err) {
+        console.error('Error comparing dates in filter:', err)
         showRow = false
       }
     }
@@ -902,17 +1087,20 @@ function setupEventListeners() {
       if (target.classList.contains('btn-view')) {
         openAppointmentModal(appointmentId)
       } else if (target.classList.contains('btn-confirm')) {
-        if (confirm('Confirm this appointment?')) {
-          updateAppointmentStatus(appointmentId, 'confirmed')
-        }
+        showConfirmDialog(
+          'Are you sure you want to confirm this appointment?',
+          () => updateAppointmentStatus(appointmentId, 'confirmed')
+        )
       } else if (target.classList.contains('btn-complete')) {
-        if (confirm('Mark this appointment as completed?')) {
-          updateAppointmentStatus(appointmentId, 'completed')
-        }
+        showConfirmDialog(
+          'Are you sure you want to mark this appointment as completed?',
+          () => updateAppointmentStatus(appointmentId, 'completed')
+        )
       } else if (target.classList.contains('btn-cancel')) {
-        if (confirm('Cancel this appointment?')) {
-          updateAppointmentStatus(appointmentId, 'cancelled')
-        }
+        showConfirmDialog(
+          'Are you sure you want to cancel this appointment?',
+          () => updateAppointmentStatus(appointmentId, 'cancelled')
+        )
       }
     })
 
@@ -964,7 +1152,10 @@ function setupEventListeners() {
     .addEventListener('click', function () {
       const appointmentId =
         document.getElementById('appointment-modal').dataset.appointmentId
-      updateAppointmentStatus(appointmentId, 'confirmed')
+      showConfirmDialog(
+        'Are you sure you want to confirm this appointment?',
+        () => updateAppointmentStatus(appointmentId, 'confirmed')
+      )
     })
 
   document
@@ -972,7 +1163,10 @@ function setupEventListeners() {
     .addEventListener('click', function () {
       const appointmentId =
         document.getElementById('appointment-modal').dataset.appointmentId
-      updateAppointmentStatus(appointmentId, 'completed')
+      showConfirmDialog(
+        'Are you sure you want to mark this appointment as completed?',
+        () => updateAppointmentStatus(appointmentId, 'completed')
+      )
     })
 
   document
@@ -980,7 +1174,10 @@ function setupEventListeners() {
     .addEventListener('click', function () {
       const appointmentId =
         document.getElementById('appointment-modal').dataset.appointmentId
-      updateAppointmentStatus(appointmentId, 'cancelled')
+      showConfirmDialog(
+        'Are you sure you want to cancel this appointment?',
+        () => updateAppointmentStatus(appointmentId, 'cancelled')
+      )
     })
 
   // Edit user role button in user modal

@@ -10,6 +10,8 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
     />
+    <!-- Add notification system first -->
+    <script src="js/notifications.js"></script>
     <!-- Add auth.js before main script to protect the page -->
     <script src="js/auth.js"></script>
     <script>
@@ -17,11 +19,11 @@
       if (!localStorage.getItem('user')) {
         window.location.replace('login.html')
       } else {
-        // Check if user is dentist, redirect if not
+        // Check if user is dentist or admin, redirect if not
         try {
           const user = JSON.parse(localStorage.getItem('user'))
-          if (user.role !== 'dentist') {
-            alert('Access denied. Dentist access only.')
+          if (user.role !== 'dentist' && user.role !== 'admin') {
+            // We'll handle the notification in DOMContentLoaded event
             window.location.replace('dashboard.html')
           }
         } catch (e) {
@@ -38,7 +40,6 @@
         <div class="logo">BastaDental Dentist</div>
         <ul class="nav-links">
           <li><a href="index.html">Home</a></li>
-          <li><a href="dashboard.html">Personal Dashboard</a></li>
           <li><a href="#" class="active">Dentist Dashboard</a></li>
           <li><a href="#" id="logout-btn">Logout</a></li>
         </ul>
@@ -91,7 +92,13 @@
                   placeholder="Filter by date"
                 />
                 <button id="clear-filters" class="btn btn-sm">Clear</button>
+                <button id="view-toggle" class="btn btn-sm btn-primary">
+                  View All Appointments
+                </button>
               </div>
+            </div>
+            <div id="view-mode-indicator" class="view-mode">
+              Viewing: My Appointments
             </div>
             <div class="appointments-list">
               <table id="dentist-appointments-table">
@@ -235,12 +242,15 @@
     <script>
       // Double-check authentication when DOM is fully loaded
       document.addEventListener('DOMContentLoaded', function () {
-        // Check if user is dentist, redirect if not
+        // Check if user is dentist or admin, redirect if not
         try {
           const user = JSON.parse(localStorage.getItem('user'))
-          if (!user || user.role !== 'dentist') {
-            alert('Access denied. Dentist access only.')
-            window.location.replace('dashboard.html')
+          if (!user || (user.role !== 'dentist' && user.role !== 'admin')) {
+            showNotificationDialog(
+              'Access denied. Dental professional access only.',
+              'Access Denied',
+              () => window.location.replace('dashboard.html')
+            )
             return
           }
         } catch (e) {
@@ -251,5 +261,6 @@
       })
     </script>
     <script src="js/dentist.js"></script>
+    <script src="js/dentist-auth.js"></script>
   </body>
 </html>

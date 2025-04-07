@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BastaDental - Process Payment</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="css/payment.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <!-- Add notification system first -->
+    <script src="js/notifications.js"></script>
+    <!-- Add auth.js before main script to protect the page -->
+    <script src="js/auth.js"></script>
+    <script>
+      // Immediately redirect if not authenticated or no pending appointment
+      if (
+        !localStorage.getItem('user') ||
+        !localStorage.getItem('pendingAppointment')
+      ) {
+        window.location.replace('login.html')
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="logo">BastaDental</div>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="#" class="active">Payment</a></li>
+          <li><a href="#" id="logout-btn">Logout</a></li>
+        </ul>
+        <div class="burger">
+          <div class="line1"></div>
+          <div class="line2"></div>
+          <div class="line3"></div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Payment Content -->
+    <section class="payment-section">
+      <div class="container">
+        <div class="section-header">
+          <h1>Complete Your Payment</h1>
+          <p>Process your downpayment to confirm your dental appointment</p>
+        </div>
+
+        <div class="payment-container">
+          <div class="payment-summary">
+            <h2>Appointment Details</h2>
+            <div class="summary-details">
+              <div class="summary-row">
+                <span class="summary-label"
+                  ><i class="fas fa-clipboard-check"></i> Service:</span
+                >
+                <span class="summary-value" id="summary-service"
+                  >General Checkup</span
+                >
+              </div>
+              <div class="summary-row">
+                <span class="summary-label"
+                  ><i class="fas fa-calendar-alt"></i> Date & Time:</span
+                >
+                <span class="summary-value" id="summary-datetime"
+                  >Not available</span
+                >
+              </div>
+              <div class="summary-row">
+                <span class="summary-label"
+                  ><i class="fas fa-user-md"></i> Dentist:</span
+                >
+                <span class="summary-value" id="summary-dentist"
+                  >Not selected</span
+                >
+              </div>
+              <div class="summary-row">
+                <span class="summary-label"
+                  ><i class="fas fa-money-bill-wave"></i> Amount Due:</span
+                >
+                <span class="summary-value" id="summary-amount">₱0.00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="payment-methods">
+            <h2>Select Payment Method</h2>
+            <div class="payment-tabs">
+              <button class="payment-tab active" data-method="card">
+                <i class="fas fa-credit-card"></i> Credit/Debit Card
+              </button>
+              <button class="payment-tab" data-method="gcash">
+                <i class="fas fa-mobile-alt"></i> GCash
+              </button>
+              <button class="payment-tab" data-method="bank">
+                <i class="fas fa-university"></i> Bank Transfer
+              </button>
+            </div>
+
+            <div class="payment-form-container">
+              <!-- Credit Card Form -->
+              <form id="card-payment-form" class="payment-form active">
+                <div class="card-types">
+                  <img
+                    src="https://cdn.iconscout.com/icon/free/png-256/visa-3-226460.png"
+                    alt="Visa"
+                    class="card-type"
+                  />
+                  <img
+                    src="https://cdn.iconscout.com/icon/free/png-256/mastercard-3521564-2944982.png"
+                    alt="Mastercard"
+                    class="card-type"
+                  />
+                  <img
+                    src="https://cdn.iconscout.com/icon/free/png-256/american-express-3521560-2944978.png"
+                    alt="Amex"
+                    class="card-type"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="card-name">Cardholder Name</label>
+                  <input
+                    type="text"
+                    id="card-name"
+                    placeholder="As it appears on your card"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="card-number">Card Number</label>
+                  <input
+                    type="text"
+                    id="card-number"
+                    placeholder="XXXX XXXX XXXX XXXX"
+                    required
+                    autocomplete="cc-number"
+                  />
+                </div>
+                <div class="form-row">
+                  <div class="form-group half">
+                    <label for="card-expiry">Expiry Date</label>
+                    <input
+                      type="text"
+                      id="card-expiry"
+                      placeholder="MM/YY"
+                      required
+                      autocomplete="cc-exp"
+                    />
+                  </div>
+                  <div class="form-group half">
+                    <label for="card-cvv">CVV</label>
+                    <input
+                      type="text"
+                      id="card-cvv"
+                      placeholder="XXX"
+                      required
+                      autocomplete="cc-csc"
+                      maxlength="4"
+                    />
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-payment">
+                  Pay ₱<span id="card-amount">0.00</span> Now
+                </button>
+                <div class="secure-badge">
+                  <i class="fas fa-lock"></i> Secure Payment
+                </div>
+              </form>
+
+              <!-- GCash Form -->
+              <form id="gcash-payment-form" class="payment-form">
+                <div class="gcash-instructions">
+                  <h3>
+                    Pay via GCash <span class="demo-badge">Demo Mode</span>
+                  </h3>
+
+                  <div class="qr-code loading">
+                    <img
+                      src="images/gcash-qr.png"
+                      alt="GCash QR Code"
+                      onload="this.parentElement.classList.remove('loading')"
+                      onerror="this.parentElement.classList.add('error')"
+                    />
+                  </div>
+
+                  <div class="gcash-account-info">
+                    <p>
+                      <strong>GCash Name:</strong> BastaDental Clinic (Demo)
+                    </p>
+                    <p>
+                      <strong>GCash Number:</strong>
+                      <span class="gcash-number">0917-123-4567</span>
+                    </p>
+                    <p>
+                      <strong>Amount:</strong> ₱<span id="gcash-amount-display"
+                        >0.00</span
+                      >
+                    </p>
+                  </div>
+
+                  <div class="gcash-steps">
+                    <h4>How to pay with GCash:</h4>
+                    <ol>
+                      <li>Open your GCash app and scan the QR code above</li>
+                      <li>Or send the exact amount to our GCash number</li>
+                      <li>Use your appointment date as reference</li>
+                      <li>Enter the reference number below after payment</li>
+                    </ol>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="gcash-reference"
+                      >Enter GCash Reference Number</label
+                    >
+                    <input
+                      type="text"
+                      id="gcash-reference"
+                      placeholder="Reference number from GCash (e.g., 1234567890)"
+                      required
+                    />
+                  </div>
+                  <button type="submit" class="btn btn-payment">
+                    Confirm Payment of ₱<span id="gcash-amount">0.00</span>
+                  </button>
+                </div>
+              </form>
+
+              <!-- Bank Transfer Form -->
+              <form id="bank-payment-form" class="payment-form">
+                <div class="bank-instructions">
+                  <h3>Bank Transfer Details</h3>
+                  <p>
+                    Please transfer the exact amount to the following account:
+                  </p>
+                  <div class="bank-details">
+                    <div><strong>Bank:</strong> <span>BDO</span></div>
+                    <div>
+                      <strong>Account Name:</strong>
+                      <span>BastaDental Clinic</span>
+                    </div>
+                    <div>
+                      <strong>Account Number:</strong>
+                      <span>1234-5678-9012</span>
+                    </div>
+                    <div>
+                      <strong>Amount:</strong>
+                      <span id="bank-amount">₱0.00</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="bank-reference">Enter Reference Number</label>
+                    <input
+                      type="text"
+                      id="bank-reference"
+                      placeholder="Reference number from your bank"
+                      required
+                    />
+                  </div>
+                  <button type="submit" class="btn btn-payment">
+                    Confirm Payment
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="payment-footer">
+            <p>
+              <i class="fas fa-lock"></i> All payments are secure and encrypted
+            </p>
+            <p class="payment-cancel">
+              Changed your mind?
+              <a href="#" id="cancel-payment"
+                >Cancel and pay at clinic instead</a
+              >
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <p>&copy; 2025 BastaDental. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/payment.js"></script>
+  </body>
+</html>

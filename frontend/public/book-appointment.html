@@ -10,12 +10,27 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
     />
+    <!-- Add notification system first -->
+    <script src="js/notifications.js"></script>
     <!-- Add auth.js before main script to protect the page -->
     <script src="js/auth.js"></script>
     <script>
       // Immediately redirect if not authenticated - runs before page loads
       if (!localStorage.getItem('user')) {
         window.location.replace('login.html')
+      } else {
+        try {
+          // Check if user is a dentist and redirect if so
+          const user = JSON.parse(localStorage.getItem('user'))
+          if (user.role === 'dentist') {
+            // We'll handle the notification in DOMContentLoaded event to ensure
+            // notification system is fully loaded
+            window.location.replace('dentist-dashboard.html')
+          }
+        } catch (e) {
+          localStorage.removeItem('user')
+          window.location.replace('login.html')
+        }
       }
     </script>
   </head>
@@ -67,7 +82,7 @@
 
           <!-- Form wrapper -->
           <div class="booking-form-container">
-            <form id="booking-form">
+            <form id="booking-form" novalidate>
               <!-- Step 1: Service Selection -->
               <div class="form-step active" id="step-1">
                 <h2>Select a Service</h2>
@@ -163,12 +178,7 @@
                   <h3>Select a Dentist</h3>
                   <select id="dentist" name="dentist" required>
                     <option value="">Choose a dentist...</option>
-                    <option value="Dr. Sarah Johnson">Dr. Sarah Johnson</option>
-                    <option value="Dr. Michael Chen">Dr. Michael Chen</option>
-                    <option value="Dr. Emily Wilson">Dr. Emily Wilson</option>
-                    <option value="Dr. James Rodriguez">
-                      Dr. James Rodriguez
-                    </option>
+                    <!-- Dentists will be loaded dynamically -->
                   </select>
                 </div>
 
@@ -258,6 +268,93 @@
                       >Not selected</span
                     >
                   </div>
+
+                  <!-- Add downpayment information -->
+                  <div class="summary-item">
+                    <span class="summary-label"
+                      ><i class="fas fa-money-bill-wave"></i> Required
+                      Downpayment:</span
+                    >
+                    <span class="summary-value" id="summary-downpayment"
+                      >₱200.00</span
+                    >
+                  </div>
+
+                  <!-- Add payment method information -->
+                  <div class="summary-item">
+                    <span class="summary-label"
+                      ><i class="fas fa-credit-card"></i> Payment Method:</span
+                    >
+                    <span class="summary-value" id="summary-payment-method"
+                      >Pay at clinic before appointment</span
+                    >
+                  </div>
+                </div>
+
+                <!-- Add payment method selection -->
+                <div class="payment-method-section">
+                  <h3>Select Payment Method</h3>
+                  <div class="payment-options">
+                    <div class="payment-option">
+                      <input
+                        type="radio"
+                        id="payment-clinic"
+                        name="payment-method"
+                        value="clinic"
+                        checked
+                      />
+                      <label for="payment-clinic">
+                        <i class="fas fa-building"></i>
+                        <span class="payment-name">Pay at Clinic</span>
+                        <span class="payment-detail"
+                          >Pay before your appointment</span
+                        >
+                      </label>
+                    </div>
+
+                    <div class="payment-option">
+                      <input
+                        type="radio"
+                        id="payment-online"
+                        name="payment-method"
+                        value="online"
+                      />
+                      <label for="payment-online">
+                        <i class="fas fa-credit-card"></i>
+                        <span class="payment-name">Pay Online Now</span>
+                        <span class="payment-detail"
+                          >Credit/Debit Card or GCash</span
+                        >
+                      </label>
+                    </div>
+                  </div>
+                  <!-- Payment restriction notice will be added dynamically here -->
+
+                  <div
+                    id="online-payment-instructions"
+                    class="payment-instructions"
+                    style="display: none"
+                  >
+                    <i class="fas fa-info-circle"></i>
+                    <p>
+                      After booking, you will be redirected to our secure
+                      payment page to complete your transaction.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="downpayment-notice">
+                  <i class="fas fa-info-circle"></i>
+                  <p>
+                    A downpayment is required to secure your appointment. This
+                    can be paid at the clinic prior to your appointment or via
+                    our online payment options.
+                  </p>
+                  <p>
+                    Please note: Appointments cannot be cancelled on the same
+                    day. For any changes, please contact us at least one day in
+                    advance.
+                  </p>
                 </div>
 
                 <div class="additional-notes">
@@ -298,12 +395,30 @@
     <script>
       // Double-check authentication when DOM is fully loaded
       document.addEventListener('DOMContentLoaded', function () {
+        // First check regular auth
         if (!checkAuth()) {
           // Stop all other script execution if not authenticated
           return
         }
+
+        // Then check if user can book (not a dentist)
+        try {
+          const user = JSON.parse(localStorage.getItem('user'))
+          if (user.role === 'dentist') {
+            // Use notification dialog instead of alert
+            showNotificationDialog(
+              'As a dentist, you cannot book appointments. Please use your dentist dashboard to manage appointments.',
+              'Access Restricted',
+              () => window.location.replace('dentist-dashboard.html')
+            )
+            return
+          }
+        } catch (e) {
+          console.error('Error checking user role:', e)
+        }
       })
     </script>
+    <script src="js/booking-permissions.js"></script>
     <script src="js/appointments.js"></script>
   </body>
 </html>

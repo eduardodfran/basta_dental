@@ -78,7 +78,7 @@ function loadDentistProfile(userId) {
 }
 
 // Load appointments that this dentist is assigned to
-function loadAppointments(userId) {
+function loadAppointments(userId, showAllDentists = false) {
   const tableBody = document.getElementById('appointments-data')
   const noAppointmentsMsg = document.getElementById('no-appointments')
 
@@ -86,8 +86,20 @@ function loadAppointments(userId) {
   tableBody.innerHTML =
     '<tr><td colspan="5" style="text-align: center;">Loading appointments...</td></tr>'
 
-  // Fetch appointments from API
-  fetch(`http://localhost:3000/api/dentist/appointments/${userId}`)
+  // Update view mode indicator
+  const viewModeElement = document.getElementById('view-mode-indicator')
+  if (viewModeElement) {
+    viewModeElement.textContent = showAllDentists
+      ? 'Viewing: All Dentists'
+      : 'Viewing: My Appointments'
+  }
+
+  // Fetch appointments from API - either just this dentist's or all
+  const endpoint = showAllDentists
+    ? 'http://localhost:3000/api/appointments'
+    : `http://localhost:3000/api/dentist/appointments/${userId}`
+
+  fetch(endpoint)
     .then((response) => {
       if (!response.ok) {
         throw new Error('Failed to fetch appointments')
@@ -113,51 +125,85 @@ function loadAppointments(userId) {
 
         // Add appointments to table
         appointments.forEach((apt) => {
-          // Format date for display
-          const dateObj = new Date(apt.date)
-          // Add 1 day to compensate for potential timezone issue
-          const timezoneOffset = new Date().getTimezoneOffset()
-          if (timezoneOffset > 0) {
-            dateObj.setDate(dateObj.getDate() + 1)
+          // Format date for display with better error handling
+          let formattedDate = 'Invalid date'
+          try {
+            if (apt.date) {
+              const dateObj = new Date(apt.date)
+
+              // Check if date is valid before formatting
+              if (!isNaN(dateObj.getTime())) {
+                formattedDate = dateObj.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })
+              } else {
+                console.warn('Invalid date for appointment ID:', apt.id)
+              }
+            }
+          } catch (err) {
+            console.error('Error formatting date:', err)
           }
 
-          const formattedDate = dateObj.toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })
-
-          // Format time if available
+          // Format time with proper error handling
           let formattedTime = 'N/A'
-          if (apt.time) {
-            const [hours, minutes] = apt.time.split(':')
-            const timeObj = new Date()
-            timeObj.setHours(hours, minutes, 0)
-            formattedTime = timeObj.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+          try {
+            if (apt.time) {
+              const [hours, minutes] = apt.time.split(':')
+              if (!isNaN(hours) && !isNaN(minutes)) {
+                const timeObj = new Date()
+                timeObj.setHours(hours, minutes, 0)
+                formattedTime = timeObj.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              }
+            }
+          } catch (err) {
+            console.error(
+              'Error formatting time for appointment ID:',
+              apt.id,
+              err
+            )
           }
 
+          // Create a row with appropriate styling if this isn't the current dentist's appointment
           const row = document.createElement('tr')
           row.dataset.appointmentId = apt.id
           row.dataset.patientId = apt.user_id
           row.dataset.patientName = apt.userName || 'Unknown'
 
+          // Get current user's name
+          const currentUser = JSON.parse(localStorage.getItem('user'))
+          const isCurrentDentistAppointment = apt.dentist === currentUser.name
+
+          // Add a class if this isn't the current dentist's appointment
+          if (!isCurrentDentistAppointment && showAllDentists) {
+            row.classList.add('other-dentist-appointment')
+          }
+
           row.innerHTML = `
             <td>${formattedDate}<br>${formattedTime}</td>
             <td>${apt.userName || 'Unknown'}</td>
             <td>${apt.service}</td>
-            <td><span class="appointment-status status-${apt.status}">${
-            apt.status.charAt(0).toUpperCase() + apt.status.slice(1)
-          }</span></td>
+            <td>
+              <span class="appointment-status status-${apt.status}">
+                ${apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
+              </span>
+              ${
+                !isCurrentDentistAppointment && showAllDentists
+                  ? `<span class="dentist-tag">${apt.dentist}</span>`
+                  : ''
+              }
+            </td>
             <td>
               <button class="action-btn btn-view" title="View Details">
                 <i class="fas fa-eye"></i>
               </button>
               ${
-                apt.status === 'pending'
+                isCurrentDentistAppointment && apt.status === 'pending'
                   ? `
                 <button class="action-btn btn-confirm" title="Confirm Appointment">
                   <i class="fas fa-check"></i>
@@ -166,7 +212,7 @@ function loadAppointments(userId) {
                   : ''
               }
               ${
-                apt.status === 'confirmed'
+                isCurrentDentistAppointment && apt.status === 'confirmed'
                   ? `
                 <button class="action-btn btn-complete" title="Mark as Completed">
                   <i class="fas fa-check-double"></i>
@@ -175,10 +221,23 @@ function loadAppointments(userId) {
                   : ''
               }
               ${
-                apt.status !== 'cancelled' && apt.status !== 'completed'
+                isCurrentDentistAppointment &&
+                apt.status !== 'cancelled' &&
+                apt.status !== 'completed'
                   ? `
                 <button class="action-btn btn-cancel" title="Cancel Appointment">
                   <i class="fas fa-times"></i>
+                </button>
+              `
+                  : ''
+              }
+              ${
+                !isCurrentDentistAppointment &&
+                showAllDentists &&
+                apt.status === 'pending'
+                  ? `
+                <button class="action-btn btn-assign" title="Assign to Me">
+                  <i class="fas fa-user-plus"></i>
                 </button>
               `
                   : ''
@@ -316,31 +375,45 @@ function openAppointmentModal(appointmentId, userId, patientId, patientName) {
 
       const apt = data.appointment
 
-      // Format date for display
-      const dateObj = new Date(apt.date)
-      // Adjust for timezone if needed
-      const timezoneOffset = new Date().getTimezoneOffset()
-      if (timezoneOffset > 0) {
-        dateObj.setDate(dateObj.getDate() + 1)
+      // Format date for display with better error handling
+      let formattedDate = 'Not available'
+      try {
+        if (apt.date) {
+          // Standardize date format and handle timezone consistently
+          const dateObj = new Date(apt.date)
+
+          // Check if date is valid before formatting
+          if (!isNaN(dateObj.getTime())) {
+            formattedDate = dateObj.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })
+          } else {
+            console.warn('Invalid appointment date:', apt.date)
+          }
+        }
+      } catch (err) {
+        console.error('Error formatting appointment date:', err)
       }
 
-      const formattedDate = dateObj.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-
-      // Format time if available
-      let formattedTime = 'N/A'
-      if (apt.time) {
-        const [hours, minutes] = apt.time.split(':')
-        const timeObj = new Date()
-        timeObj.setHours(hours, minutes, 0)
-        formattedTime = timeObj.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
+      // Format time with better error handling
+      let formattedTime = 'Not available'
+      try {
+        if (apt.time) {
+          const [hours, minutes] = apt.time.split(':')
+          if (!isNaN(hours) && !isNaN(minutes)) {
+            const timeObj = new Date()
+            timeObj.setHours(hours, minutes, 0)
+            formattedTime = timeObj.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Error formatting appointment time:', err)
       }
 
       // Populate details
@@ -424,6 +497,91 @@ function openAppointmentModal(appointmentId, userId, patientId, patientName) {
 
 // Update appointment status
 function updateAppointmentStatus(appointmentId, status) {
+  // If cancelling, check date first
+  if (status === 'cancelled') {
+    // For dentists, we'll also allow cancellation but show a warning for same-day appointments
+    fetch(`http://localhost:3000/api/appointments/${appointmentId}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch appointment details')
+        }
+        return response.json()
+      })
+      .then((data) => {
+        if (!data.success || !data.appointment) {
+          throw new Error('Failed to retrieve appointment information')
+        }
+
+        const appointment = data.appointment
+
+        try {
+          // Create date objects with proper timezone handling and validation
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+
+          let appointmentDate = null
+
+          if (appointment.date) {
+            // Safely parse the date
+            appointmentDate = new Date(appointment.date)
+
+            // Validate the date is valid before comparison
+            if (isNaN(appointmentDate.getTime())) {
+              throw new Error('Invalid appointment date')
+            }
+
+            // Set both to midnight for date comparison only
+            appointmentDate.setHours(0, 0, 0, 0)
+
+            // Show appropriate warning for same-day cancellation
+            if (appointmentDate.getTime() <= today.getTime()) {
+              showConfirmDialog(
+                '<b>Warning:</b> This is a same-day appointment cancellation. The patient should be notified immediately.<br><br>Are you sure you want to proceed?',
+                () => processDentistStatusUpdate(appointmentId, status),
+                null,
+                'Proceed with Cancellation',
+                'Go Back'
+              )
+              return
+            }
+          } else {
+            // If no date is available, assume it's valid to cancel
+            console.warn(
+              'No date available for appointment, proceeding with cancellation'
+            )
+          }
+
+          // If not same-day, proceed with normal cancellation confirmation
+          showConfirmDialog(
+            `Are you sure you want to cancel this appointment?`,
+            () => processDentistStatusUpdate(appointmentId, status)
+          )
+        } catch (error) {
+          console.error('Error validating appointment date:', error)
+          showToast(
+            `Error validating date: ${error.message}. Proceeding with cancellation option.`,
+            TOAST_LEVELS.WARNING
+          )
+
+          // Still allow cancellation even if there's a date validation error
+          showConfirmDialog(
+            `Unable to validate appointment date, but you can still cancel. Continue?`,
+            () => processDentistStatusUpdate(appointmentId, status)
+          )
+        }
+      })
+      .catch((error) => {
+        console.error('Error checking appointment date:', error)
+        showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+      })
+  } else {
+    // For non-cancellation status updates, proceed normally
+    processDentistStatusUpdate(appointmentId, status)
+  }
+}
+
+// Helper function to process the actual status update
+function processDentistStatusUpdate(appointmentId, status) {
   fetch(`http://localhost:3000/api/appointments/${appointmentId}/status`, {
     method: 'PUT',
     headers: {
@@ -453,12 +611,13 @@ function updateAppointmentStatus(appointmentId, status) {
 
       // Close modal and reload appointments
       closeModal()
+      showToast(`Appointment ${status} successfully!`, TOAST_LEVELS.SUCCESS)
       const userId = JSON.parse(localStorage.getItem('user')).id
       loadAppointments(userId)
     })
     .catch((error) => {
       console.error('Error updating appointment status:', error)
-      alert(`Error: ${error.message}`)
+      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
     })
 }
 
@@ -596,10 +755,15 @@ function filterAppointments() {
     // Filter by date
     if (dateFilter && showRow) {
       const dateCell = row.querySelector('td:nth-child(1)').textContent
-      const rowDate = new Date(dateCell.split('at')[0].trim())
+
+      // Extract just the date part from the cell text which might include time
+      const datePart = dateCell.split('<br>')[0].trim()
+
+      // Create date objects for comparison (correct timezone handling)
+      const rowDate = new Date(datePart)
       const filterDate = new Date(dateFilter)
 
-      // Compare year, month, and day
+      // Just compare the date parts (year, month, day)
       if (
         rowDate.getFullYear() !== filterDate.getFullYear() ||
         rowDate.getMonth() !== filterDate.getMonth() ||
@@ -714,17 +878,25 @@ function setupEventListeners(userId) {
       if (target.classList.contains('btn-view')) {
         openAppointmentModal(appointmentId, userId, patientId, patientName)
       } else if (target.classList.contains('btn-confirm')) {
-        if (confirm('Confirm this appointment?')) {
-          updateAppointmentStatus(appointmentId, 'confirmed')
-        }
+        showConfirmDialog(
+          'Are you sure you want to confirm this appointment?',
+          () => updateAppointmentStatus(appointmentId, 'confirmed')
+        )
       } else if (target.classList.contains('btn-complete')) {
-        if (confirm('Mark this appointment as completed?')) {
-          updateAppointmentStatus(appointmentId, 'completed')
-        }
+        showConfirmDialog(
+          'Are you sure you want to mark this appointment as completed?',
+          () => updateAppointmentStatus(appointmentId, 'completed')
+        )
       } else if (target.classList.contains('btn-cancel')) {
-        if (confirm('Cancel this appointment?')) {
-          updateAppointmentStatus(appointmentId, 'cancelled')
-        }
+        showConfirmDialog(
+          'Are you sure you want to cancel this appointment?',
+          () => updateAppointmentStatus(appointmentId, 'cancelled')
+        )
+      } else if (target.classList.contains('btn-assign')) {
+        showConfirmDialog(
+          'Are you sure you want to assign this appointment to yourself?',
+          () => assignAppointmentToDentist(appointmentId, userId)
+        )
       }
     })
 
@@ -738,7 +910,10 @@ function setupEventListeners(userId) {
     .addEventListener('click', function () {
       const appointmentId =
         document.getElementById('appointment-modal').dataset.appointmentId
-      updateAppointmentStatus(appointmentId, 'confirmed')
+      showConfirmDialog(
+        'Are you sure you want to confirm this appointment?',
+        () => updateAppointmentStatus(appointmentId, 'confirmed')
+      )
     })
 
   document
@@ -746,7 +921,10 @@ function setupEventListeners(userId) {
     .addEventListener('click', function () {
       const appointmentId =
         document.getElementById('appointment-modal').dataset.appointmentId
-      updateAppointmentStatus(appointmentId, 'completed')
+      showConfirmDialog(
+        'Are you sure you want to mark this appointment as completed?',
+        () => updateAppointmentStatus(appointmentId, 'completed')
+      )
     })
 
   document
@@ -754,7 +932,10 @@ function setupEventListeners(userId) {
     .addEventListener('click', function () {
       const appointmentId =
         document.getElementById('appointment-modal').dataset.appointmentId
-      updateAppointmentStatus(appointmentId, 'cancelled')
+      showConfirmDialog(
+        'Are you sure you want to cancel this appointment?',
+        () => updateAppointmentStatus(appointmentId, 'cancelled')
+      )
     })
 
   // Save patient notes button
@@ -857,6 +1038,69 @@ function setupEventListeners(userId) {
       closeModal()
     }
   })
+
+  // Toggle view between my appointments and all dentists
+  document.getElementById('view-toggle').addEventListener('click', function () {
+    const isViewingAll = this.classList.toggle('viewing-all')
+    // Update button text
+    this.textContent = isViewingAll
+      ? 'View My Appointments'
+      : 'View All Appointments'
+    // Reload appointments with the new filter
+    loadAppointments(userId, isViewingAll)
+  })
+}
+
+// New function to assign an appointment to the current dentist
+function assignAppointmentToDentist(appointmentId, userId) {
+  const currentUser = JSON.parse(localStorage.getItem('user'))
+  if (!currentUser || !currentUser.name) {
+    showToast('Error: User information not available', TOAST_LEVELS.ERROR)
+    return
+  }
+
+  fetch(`http://localhost:3000/api/appointments/${appointmentId}/assign`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      dentistName: currentUser.name,
+      dentistId: userId,
+    }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        return response
+          .json()
+          .then((data) => {
+            throw new Error(data.message || 'Failed to assign appointment')
+          })
+          .catch(() => {
+            throw new Error(`Server error: ${response.status}`)
+          })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to assign appointment')
+      }
+
+      showToast(
+        `Appointment assigned to you successfully!`,
+        TOAST_LEVELS.SUCCESS
+      )
+
+      // Reload with current view mode
+      const viewToggleBtn = document.getElementById('view-toggle')
+      const isViewingAll = viewToggleBtn.classList.contains('viewing-all')
+      loadAppointments(userId, isViewingAll)
+    })
+    .catch((error) => {
+      console.error('Error assigning appointment:', error)
+      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+    })
 }
 
 // Dentist auth check function

@@ -182,6 +182,36 @@ class Appointment {
   }
 
   /**
+   * Assign appointment to a dentist
+   * @param {number} id - Appointment ID
+   * @param {string} dentistName - Dentist name
+   * @param {number} dentistId - Dentist user ID (optional)
+   * @returns {Object} - Updated appointment
+   */
+  static async assignToDentist(id, dentistName, dentistId = null) {
+    try {
+      const pool = getPool()
+
+      // Update appointment dentist
+      await pool.query('UPDATE appointments SET dentist = ? WHERE id = ?', [
+        dentistName,
+        id,
+      ])
+
+      // Get updated appointment
+      const [rows] = await pool.query(
+        'SELECT * FROM appointments WHERE id = ?',
+        [id]
+      )
+
+      return rows[0]
+    } catch (error) {
+      console.error('Error assigning appointment to dentist:', error)
+      throw error
+    }
+  }
+
+  /**
    * Find all appointments
    * @returns {Array} - Array of appointment objects
    */
@@ -221,6 +251,84 @@ class Appointment {
       return rows
     } catch (error) {
       console.error('Error finding dentist appointments:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update payment information for an appointment
+   * @param {number} id - Appointment ID
+   * @param {string} downpaymentStatus - New downpayment status
+   * @param {string} paymentMethod - Payment method used
+   * @returns {Object} - Updated appointment
+   */
+  static async updatePayment(id, downpaymentStatus, paymentMethod) {
+    try {
+      const pool = getPool()
+
+      // First, verify if the columns exist in the table
+      const [columns] = await pool.query('SHOW COLUMNS FROM appointments')
+      const columnNames = columns.map((col) => col.Field)
+      const hasDownpaymentStatus = columnNames.includes('downpayment_status')
+      const hasPaymentMethod = columnNames.includes('payment_method')
+      const hasPaymentStatus = columnNames.includes('payment_status')
+
+      // Build the query based on available columns
+      let query = `UPDATE appointments SET `
+      const queryParams = []
+
+      if (hasDownpaymentStatus) {
+        query += `downpayment_status = ?`
+        queryParams.push(downpaymentStatus)
+      } else if (hasPaymentStatus) {
+        // Fall back to payment_status if it exists
+        query += `payment_status = ?`
+        queryParams.push(downpaymentStatus)
+      } else {
+        // If neither column exists, use the status column to mark as confirmed
+        query += `status = 'confirmed'`
+      }
+
+      if (hasPaymentMethod) {
+        if (queryParams.length > 0) query += `, `
+        query += `payment_method = ?`
+        queryParams.push(paymentMethod)
+      }
+
+      query += ` WHERE id = ?`
+      queryParams.push(id)
+
+      // Execute the query with available columns
+      await pool.query(query, queryParams)
+
+      return this.findById(id)
+    } catch (error) {
+      console.error('Error updating appointment payment:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update payment method for an appointment
+   * @param {number} id - Appointment ID
+   * @param {string} paymentMethod - New payment method
+   * @returns {Object} - Updated appointment
+   */
+  static async updatePaymentMethod(id, paymentMethod) {
+    try {
+      const pool = getPool()
+
+      // Update notes to include payment method information
+      await pool.query(
+        `UPDATE appointments 
+         SET notes = CONCAT(IFNULL(notes, ''), '\n[Payment Method: ', ?, ']')
+         WHERE id = ?`,
+        [paymentMethod, id]
+      )
+
+      return this.findById(id)
+    } catch (error) {
+      console.error('Error updating payment method:', error)
       throw error
     }
   }

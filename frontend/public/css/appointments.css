@@ -461,6 +461,211 @@
   display: block;
 }
 
+/* Downpayment notice styles */
+.downpayment-notice {
+  background-color: #e7f3ff;
+  border-left: 4px solid #1a73e8;
+  padding: 15px;
+  margin: 15px 0;
+  border-radius: 4px;
+}
+
+.downpayment-notice i {
+  color: #1a73e8;
+  margin-right: 8px;
+}
+
+.downpayment-notice p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* Important notice for success message */
+.important-note {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  color: #856404;
+  border-radius: 4px;
+}
+
+.important-note i {
+  color: #ffc107;
+  margin-right: 5px;
+}
+
+/* Cancellation warning dialog styles */
+.confirm-dialog .warning-text {
+  color: #721c24;
+  background-color: #f8d7da;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+/* Payment method styles */
+.payment-method-section {
+  margin-bottom: 20px;
+}
+
+.payment-method-section h3 {
+  margin-bottom: 15px;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.payment-option {
+  position: relative;
+}
+
+.payment-option input[type='radio'] {
+  position: absolute;
+  opacity: 0;
+}
+
+.payment-option label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.payment-option label i {
+  font-size: 1.8rem;
+  color: #6c757d;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+}
+
+.payment-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.payment-detail {
+  font-size: 0.85rem;
+  color: #6c757d;
+  text-align: center;
+}
+
+.payment-option input[type='radio']:checked + label {
+  border-color: #1a73e8;
+  background-color: rgba(26, 115, 232, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.payment-option input[type='radio']:checked + label i {
+  color: #1a73e8;
+}
+
+.payment-instructions {
+  background-color: #f8f9fa;
+  border-left: 4px solid #6c757d;
+  padding: 15px;
+  margin: 15px 0;
+  border-radius: 4px;
+}
+
+.payment-instructions i {
+  color: #6c757d;
+  margin-right: 8px;
+}
+
+.payment-instructions p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+
+
+/* Styles for payment restriction notice */
+.payment-restriction-notice {
+  background-color: #e7f3ff;
+  border-left: 4px solid #1a73e8;
+  padding: 15px;
+  margin: 15px 0;
+  border-radius: 4px;
+}
+
+.payment-restriction-notice i {
+  color: #1a73e8;
+  margin-right: 8px;
+}
+
+.payment-restriction-notice p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* Disabled payment option */
+.payment-option input[type='radio']:disabled + label {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.payment-option .disabled-option {
+  opacity: 0.5;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.payment-option .disabled-option::after {
+  content: 'Not available';
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background-color: #f8d7da;
+  color: #721c24;
+  font-size: 0.7rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+/* Loading state for payment section */
+.payment-method-section.loading {
+  position: relative;
+  min-height: 150px;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 8px;
+}
+
+.loading-overlay i {
+  color: #1a73e8;
+  font-size: 1.5rem;
+}
+
 /* Responsive adjustments */
 @media screen and (max-width: 768px) {
   .booking-section {
