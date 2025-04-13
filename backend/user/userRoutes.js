@@ -6,9 +6,9 @@ import {
   updateUserProfile,
   getAllUsers,
   updateUserRole,
-  getDentistProfile,
   updateDentistProfile,
 } from './userController.js'
+import { protect, admin } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
 
@@ -17,20 +17,20 @@ router.get('/test', (req, res) => {
   res.json({ message: 'User API is working' })
 })
 
-// Auth routes
+// Public routes
 router.post('/login', loginUser)
 router.post('/signup', registerUser)
 
-// User profile routes
-router.get('/users/:id', getUserProfile)
-router.put('/users/:id', updateUserProfile)
+// Protected routes
+router.get('/profile/:id', protect, getUserProfile)
+router.put('/profile/:id', protect, updateUserProfile)
 
 // Admin routes
-router.get('/users', getAllUsers)
-router.put('/users/:id/role', updateUserRole)
+router.get('/', protect, admin, getAllUsers)
+router.put('/:id/role', protect, admin, updateUserRole)
 
-// Dentist routes
-router.get('/dentists/:id', getDentistProfile)
-router.put('/dentists/:id', updateDentistProfile)
+// Dentist profile update route
+// If you have a separate dentist route file, this might be there instead.
+router.put('/dentists/:id', protect, updateDentistProfile)
 
 export default router

@@ -188,6 +188,38 @@
   font-size: 1.1rem;
 }
 
+/* Hide availability calendar and no-availability message */
+#availability-calendar,
+#no-availability {
+  display: none;
+}
+
+/* Adjust availability-list container to account for removed section */
+.availability-list {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: fit-content;
+}
+
+/* Availability info text */
+.availability-info {
+  background-color: #f8f9fa;
+  border-left: 4px solid #17a2b8;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  border-radius: 0 4px 4px 0;
+  color: #495057;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.availability-info i {
+  color: #17a2b8;
+  margin-right: 5px;
+}
+
 /* Form Styles */
 .form-group {
   margin-bottom: 1.5rem;
@@ -271,6 +303,86 @@
   color: #dc3545;
   cursor: pointer;
   font-size: 1rem;
+}
+
+/* Weekday selector */
+.weekday-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.weekday-checkbox {
+  background-color: #f5f5f5;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+}
+
+.weekday-checkbox:hover {
+  background-color: #e9e9e9;
+}
+
+.weekday-checkbox input {
+  margin-right: 5px;
+}
+
+.weekday-checkbox input:checked + span {
+  font-weight: bold;
+}
+
+/* Unavailability sections */
+.unavailability-section {
+  margin-bottom: 20px;
+}
+
+.unavailability-section h4 {
+  font-size: 1rem;
+  margin-bottom: 10px;
+  color: #444;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 5px;
+}
+
+.unavailability-item {
+  background-color: #fff;
+  border-left: 4px solid #dc3545;
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.unavailability-item .reason {
+  font-style: italic;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.unavailability-item .date-range {
+  font-weight: 500;
+}
+
+.unavailability-item .permanent-day {
+  font-weight: 500;
+  color: #dc3545;
+}
+
+/* Form groups in availability tab */
+#availability-tab form {
+  border-bottom: 1px solid #eaeaea;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+
+#availability-tab form:last-child {
+  border-bottom: none;
 }
 
 /* Profile Container */
@@ -515,5 +627,16 @@
   #dentist-appointments-table th:nth-child(3),
   #dentist-appointments-table td:nth-child(3) {
     display: none;
+  }
+
+  .weekday-selector {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .unavailability-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
   }
 }

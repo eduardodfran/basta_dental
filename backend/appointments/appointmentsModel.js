@@ -111,6 +111,39 @@ class Appointment {
   }
 
   /**
+   * Check if a time slot is available, excluding current appointment
+   * @param {string} date - Appointment date
+   * @param {string} time - Appointment time
+   * @param {string} dentist - Dentist name
+   * @param {number} appointmentId - Current appointment ID to exclude
+   * @returns {boolean} - True if slot is available
+   */
+  static async isTimeSlotAvailableExcludingCurrentAppointment(
+    date,
+    time,
+    dentist,
+    appointmentId
+  ) {
+    try {
+      const pool = getPool()
+
+      const [rows] = await pool.query(
+        `SELECT COUNT(*) as count 
+         FROM appointments 
+         WHERE date = ? AND time = ? AND dentist = ? 
+         AND id != ?
+         AND status != 'cancelled'`,
+        [date, time, dentist, appointmentId]
+      )
+
+      return rows[0].count === 0
+    } catch (error) {
+      console.error('Error checking time slot availability:', error)
+      throw error
+    }
+  }
+
+  /**
    * Get all appointments for a specific date
    * @param {string} date - Date to check
    * @param {string} dentist - Dentist name

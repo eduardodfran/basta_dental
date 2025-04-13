@@ -39,10 +39,63 @@ export const createAppointment = async (req, res) => {
           message: 'Cannot book appointments for past dates',
         })
       }
+
+      // Get the dentist user by name
+      const dentistUser = await User.findByName(dentist)
+      if (!dentistUser || dentistUser.role !== 'dentist') {
+        return res.status(404).json({
+          success: false,
+          message: 'Dentist not found',
+        })
+      }
+
+      // Get dentist record
+      const dentistRecord = await User.findDentistByUserId(dentistUser.id)
+      if (!dentistRecord) {
+        return res.status(404).json({
+          success: false,
+          message: 'Dentist record not found',
+        })
+      }
+
+      // Check if the day is permanently unavailable (by day of week) for the DENTIST
+      const dayOfWeek = appointmentDate.getDay() // 0-6 for Sunday to Saturday
+      const permanentUnavailability =
+        await DentistAvailability.getPermanentUnavailabilityByDayOfWeek(
+          dentistRecord.id,
+          dayOfWeek
+        )
+
+      if (permanentUnavailability && permanentUnavailability.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'The selected dentist is permanently unavailable on this day of the week.', // Specific message
+        })
+      }
+
+      // Check if the date falls within a temporary unavailability period for the DENTIST
+      const tempUnavailability =
+        await DentistAvailability.checkDateInTemporaryUnavailability(
+          dentistRecord.id,
+          date
+        )
+
+      if (tempUnavailability) {
+        return res.status(400).json({
+          success: false,
+          message: `The selected dentist is temporarily unavailable on this date${
+            tempUnavailability.reason ? `: ${tempUnavailability.reason}` : '.' // Include reason if available
+          }`,
+        })
+      }
     } catch (error) {
+      console.error('Error validating date or availability:', error) // Log specific error
       return res.status(400).json({
         success: false,
-        message: 'Invalid appointment date',
+        // Provide a more specific message if possible, otherwise generic
+        message:
+          error.message || 'Invalid appointment date or availability issue.',
       })
     }
 
@@ -188,6 +241,15 @@ export const rescheduleAppointment = async (req, res) => {
       })
     }
 
+    // Check if appointment exists
+    const appointment = await Appointment.findById(appointmentId)
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      })
+    }
+
     // Validate date format and prevent past dates
     try {
       // Create date objects for comparison
@@ -212,28 +274,75 @@ export const rescheduleAppointment = async (req, res) => {
           message: 'Cannot reschedule to a past date',
         })
       }
+
+      // Get the dentist user
+      const dentistUser = await User.findByName(appointment.dentist)
+      if (!dentistUser || dentistUser.role !== 'dentist') {
+        return res.status(404).json({
+          success: false,
+          message: 'Dentist not found',
+        })
+      }
+
+      // Get dentist record
+      const dentistRecord = await User.findDentistByUserId(dentistUser.id)
+      if (!dentistRecord) {
+        return res.status(404).json({
+          success: false,
+          message: 'Dentist record not found',
+        })
+      }
+
+      // Check if the day is permanently unavailable (by day of week) for the DENTIST
+      const dayOfWeek = appointmentDate.getDay() // 0-6 for Sunday to Saturday
+      const permanentUnavailability =
+        await DentistAvailability.getPermanentUnavailabilityByDayOfWeek(
+          dentistRecord.id,
+          dayOfWeek
+        )
+
+      if (permanentUnavailability && permanentUnavailability.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'The dentist is permanently unavailable on this day of the week.', // Specific message
+        })
+      }
+
+      // Check if the date falls within a temporary unavailability period for the DENTIST
+      const tempUnavailability =
+        await DentistAvailability.checkDateInTemporaryUnavailability(
+          dentistRecord.id,
+          date
+        )
+
+      if (tempUnavailability) {
+        return res.status(400).json({
+          success: false,
+          message: `The dentist is temporarily unavailable on this date${
+            tempUnavailability.reason ? `: ${tempUnavailability.reason}` : '.' // Include reason if available
+          }`,
+        })
+      }
     } catch (error) {
+      console.error('Error validating reschedule date or availability:', error) // Log specific error
       return res.status(400).json({
         success: false,
-        message: 'Invalid appointment date',
+        // Provide a more specific message if possible
+        message:
+          error.message || 'Invalid reschedule date or availability issue.',
       })
     }
 
-    // Check if appointment exists
-    const appointment = await Appointment.findById(appointmentId)
-    if (!appointment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Appointment not found',
-      })
-    }
+    // Check if new time slot is available (excluding this appointment)
+    const isAvailable =
+      await Appointment.isTimeSlotAvailableExcludingCurrentAppointment(
+        date,
+        time,
+        appointment.dentist,
+        appointmentId
+      )
 
-    // Check if new time slot is available
-    const isAvailable = await Appointment.isTimeSlotAvailable(
-      date,
-      time,
-      appointment.dentist
-    )
     if (!isAvailable) {
       return res.status(409).json({
         success: false,
@@ -424,6 +533,48 @@ export const assignAppointment = async (req, res) => {
 }
 
 /**
+ * Update payment method for an appointment
+ */
+export const updatePaymentMethod = async (req, res) => {
+  try {
+    const appointmentId = req.params.id
+    const { paymentMethod } = req.body
+
+    // Validate input
+    if (!paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment method is required',
+      })
+    }
+
+    // Check if appointment exists
+    const appointment = await Appointment.findById(appointmentId)
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      })
+    }
+
+    // Update appointment with new payment method
+    const updatedAppointment = await Appointment.updatePaymentMethod(
+      appointmentId,
+      paymentMethod
+    )
+
+    res.json({
+      success: true,
+      message: 'Payment method updated successfully',
+      appointment: updatedAppointment,
+    })
+  } catch (error) {
+    console.error('Update payment method error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
  * Update payment status for an appointment
  */
 export const updatePaymentStatus = async (req, res) => {
@@ -462,48 +613,6 @@ export const updatePaymentStatus = async (req, res) => {
     })
   } catch (error) {
     console.error('Update payment status error:', error)
-    res.status(500).json({ success: false, message: 'Server error' })
-  }
-}
-
-/**
- * Update payment method for an appointment
- */
-export const updatePaymentMethod = async (req, res) => {
-  try {
-    const appointmentId = req.params.id
-    const { paymentMethod } = req.body
-
-    // Validate input
-    if (!paymentMethod) {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment method is required',
-      })
-    }
-
-    // Check if appointment exists
-    const appointment = await Appointment.findById(appointmentId)
-    if (!appointment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Appointment not found',
-      })
-    }
-
-    // Update appointment with new payment method
-    const updatedAppointment = await Appointment.updatePaymentMethod(
-      appointmentId,
-      paymentMethod
-    )
-
-    res.json({
-      success: true,
-      message: 'Payment method updated successfully',
-      appointment: updatedAppointment,
-    })
-  } catch (error) {
-    console.error('Update payment method error:', error)
     res.status(500).json({ success: false, message: 'Server error' })
   }
 }

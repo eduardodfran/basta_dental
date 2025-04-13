@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // API endpoint
   const API_URL = 'http://localhost:3000/api/appointments'
   const DENTIST_API_URL = 'http://localhost:3000/api/dentist/all'
+  const CLINIC_API_URL = 'http://localhost:3000/api/clinic' // Added Clinic API base URL
 
   // Elements
   const progressSteps = document.querySelectorAll('.progress-step')
@@ -354,6 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!date) {
       timeSlotContainer.innerHTML =
         '<p class="no-slots-message">Please select a date to see available time slots</p>'
+      dateNextBtn.disabled = true
       return
     }
 
@@ -362,6 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!dateRegex.test(date)) {
       timeSlotContainer.innerHTML =
         '<p class="no-slots-message error-message">Invalid date format. Please select a date from the calendar.</p>'
+      dateNextBtn.disabled = true
       return
     }
 
@@ -369,6 +372,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (isNaN(dateObj.getTime())) {
       timeSlotContainer.innerHTML =
         '<p class="no-slots-message error-message">Invalid date. Please select a valid date.</p>'
+      dateNextBtn.disabled = true
       return
     }
 
@@ -376,10 +380,124 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!dentist) {
       timeSlotContainer.innerHTML =
         '<p class="no-slots-message">Please select a dentist to see available time slots</p>'
+      dateNextBtn.disabled = true
       return
     }
 
     // Show loading message
+    timeSlotContainer.innerHTML =
+      '<p class="no-slots-message"><i class="fas fa-spinner fa-spin"></i> Checking availability...</p>'
+    dateNextBtn.disabled = true
+
+    // --- 1. Check Clinic Availability First ---
+    fetch(`${CLINIC_API_URL}/check-availability?date=${date}`)
+      .then((response) => {
+        if (!response.ok) {
+          // Try to parse error message from backend
+          return response
+            .json()
+            .then((errData) => {
+              throw new Error(
+                errData.message || 'Failed to check clinic availability'
+              )
+            })
+            .catch(() => {
+              // Fallback if parsing fails
+              throw new Error(
+                `Clinic availability check failed with status: ${response.status}`
+              )
+            })
+        }
+        return response.json()
+      })
+      .then((clinicData) => {
+        if (!clinicData.success) {
+          throw new Error(
+            clinicData.message || 'Failed to check clinic availability'
+          )
+        }
+
+        // If clinic is NOT available, show message and stop
+        if (!clinicData.available) {
+          timeSlotContainer.innerHTML = `
+            <div class="unavailable-date-message">
+              <i class="fas fa-store-alt-slash"></i> <!-- Changed icon -->
+              <p>${
+                clinicData.reason ||
+                'The clinic is closed on this date. Please select another date.'
+              }</p>
+            </div>
+          `
+          dateNextBtn.disabled = true
+          return // Stop processing
+        }
+
+        // --- 2. If Clinic is Available, Check Dentist Availability ---
+        return fetch(
+          `http://localhost:3000/api/dentist/check-availability?date=${date}&dentistName=${encodeURIComponent(
+            dentist
+          )}`
+        )
+      })
+      .then((dentistResponse) => {
+        // This block only runs if the clinic check passed and returned a response object
+        if (!dentistResponse) return // Exit if clinic check stopped processing
+
+        if (!dentistResponse.ok) {
+          // Try to parse error message from backend
+          return dentistResponse
+            .json()
+            .then((errData) => {
+              throw new Error(
+                errData.message || 'Failed to check dentist availability'
+              )
+            })
+            .catch(() => {
+              // Fallback if parsing fails
+              throw new Error(
+                `Dentist availability check failed with status: ${dentistResponse.status}`
+              )
+            })
+        }
+        return dentistResponse.json()
+      })
+      .then((dentistData) => {
+        // This block only runs if the dentist check fetch was successful
+        if (!dentistData) return // Exit if clinic check stopped processing
+
+        if (!dentistData.success) {
+          throw new Error(dentistData.message || 'Failed to check availability')
+        }
+
+        // If dentist is NOT available on this date, show message and don't load time slots
+        if (!dentistData.available) {
+          timeSlotContainer.innerHTML = `
+            <div class="unavailable-date-message">
+              <i class="fas fa-user-clock"></i> <!-- Changed icon -->
+              <p>${
+                dentistData.reason || // Use the reason from the backend
+                'The selected dentist is not available on this date. Please select another date or dentist.' // Updated message
+              }</p>
+            </div>
+          `
+          dateNextBtn.disabled = true
+          return // Stop processing
+        }
+
+        // --- 3. If Both Clinic and Dentist are Available, Load Time Slots ---
+        fetchAvailableTimeSlots(date, dentist)
+      })
+      .catch((error) => {
+        console.error('Error checking availability:', error)
+        // Display a generic error or the specific one caught
+        timeSlotContainer.innerHTML = `<p class="no-slots-message error-message">Error checking availability: ${error.message}. Please try again.</p>`
+        dateNextBtn.disabled = true
+      })
+  }
+
+  // New function to fetch available time slots (extracted from loadAvailableTimeSlots)
+  function fetchAvailableTimeSlots(date, dentist) {
+    // Show loading message for time slots
     timeSlotContainer.innerHTML =
       '<p class="no-slots-message"><i class="fas fa-spinner fa-spin"></i> Loading available time slots...</p>'
 
@@ -390,7 +508,9 @@ document.addEventListener('DOMContentLoaded', function () {
       )}`
     )
       .then((response) => {
-        if (!response.ok) throw new Error('Failed to fetch time slots')
+        if (!response.ok) {
+          throw new Error('Failed to fetch time slots')
+        }
         return response.json()
       })
       .then((data) => {
@@ -404,6 +524,7 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error('Error loading time slots:', error)
         timeSlotContainer.innerHTML =
           '<p class="no-slots-message error-message">Error loading time slots. Please try again or select another date.</p>'
+        dateNextBtn.disabled = true
       })
   }
 

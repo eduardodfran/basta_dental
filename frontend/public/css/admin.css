@@ -462,10 +462,165 @@
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.25);
 }
 
+/* Clinic Availability Styles */
+.availability-info {
+  font-size: 0.9rem;
+  color: #666;
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  border-radius: 4px;
+  border-left: 3px solid #17a2b8;
+  margin-top: 1rem; /* Add space below h2 */
+  margin-bottom: 1.5rem;
+}
+
+.availability-info i {
+  margin-right: 5px;
+  color: #17a2b8;
+}
+
+.availability-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.availability-form h3,
+.availability-list h3 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.availability-form form {
+  margin-bottom: 2rem;
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.weekday-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.weekday-checkbox {
+  display: flex;
+  align-items: center;
+  background-color: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.9rem;
+}
+
+.weekday-checkbox:hover {
+  background-color: #e9ecef;
+}
+
+.weekday-checkbox input[type='checkbox'] {
+  margin-right: 8px;
+}
+
+.form-status {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  display: none; /* Hidden by default */
+}
+
+.form-status.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.form-status.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.form-status.info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.availability-list .unavailability-section {
+  margin-bottom: 1.5rem;
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.unavailability-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0; /* Reduced padding, use border-bottom */
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 0.5rem;
+}
+
+.unavailability-item:last-child {
+  border-bottom: none; /* Remove border for last item */
+  margin-bottom: 0;
+}
+
+.unavailability-item .permanent-day {
+  font-weight: 500;
+}
+
+.unavailability-item .date-range {
+  font-weight: 500;
+}
+
+.unavailability-item .reason {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-top: 2px;
+}
+
+.unavailability-item .actions button {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 5px;
+}
+
+.unavailability-item .actions button:hover {
+  color: #a71d2a;
+}
+
+.error-message {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+}
+
 /* Responsive design */
 @media screen and (max-width: 992px) {
   .charts-container {
     grid-template-columns: 1fr;
+  }
+
+  .availability-container {
+    grid-template-columns: 1fr; /* Stack form and list */
   }
 }
 
@@ -493,5 +648,14 @@
   #users-table th:nth-child(5),
   #users-table td:nth-child(5) {
     display: none;
+  }
+
+  .weekday-selector {
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  }
+
+  .availability-form form,
+  .availability-list .unavailability-section {
+    padding: 1rem; /* Reduce padding on smaller screens */
   }
 }

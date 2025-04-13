@@ -125,36 +125,135 @@
           <div class="tab-pane" id="availability-tab">
             <div class="tab-header">
               <h2>Manage Your Availability</h2>
+              <p class="availability-info">
+                <i class="fas fa-info-circle"></i> Your working hours are
+                automatically set to Monday-Friday, 9:00 AM - 5:00 PM. Use the
+                forms below to mark days or periods when you're unavailable.
+              </p>
             </div>
             <div class="availability-container">
               <div class="availability-form">
-                <h3>Set New Availability</h3>
-                <form id="availability-form">
+                <!-- Removed "Set Working Hours" section -->
+
+                <!-- New section for permanent unavailable days -->
+                <h3>Set Permanently Unavailable Days</h3>
+                <form id="permanent-unavailability-form">
                   <div class="form-group">
-                    <label for="availability-date">Date</label>
-                    <input type="date" id="availability-date" required />
-                  </div>
-                  <div class="form-group">
-                    <label for="time-start">Start Time</label>
-                    <input type="time" id="time-start" required />
-                  </div>
-                  <div class="form-group">
-                    <label for="time-end">End Time</label>
-                    <input type="time" id="time-end" required />
+                    <label>Select days you're never available:</label>
+                    <div class="weekday-selector">
+                      <label class="weekday-checkbox">
+                        <input
+                          type="checkbox"
+                          value="0"
+                          name="permanent-unavailable"
+                        />
+                        Sunday
+                      </label>
+                      <label class="weekday-checkbox">
+                        <input
+                          type="checkbox"
+                          value="1"
+                          name="permanent-unavailable"
+                        />
+                        Monday
+                      </label>
+                      <label class="weekday-checkbox">
+                        <input
+                          type="checkbox"
+                          value="2"
+                          name="permanent-unavailable"
+                        />
+                        Tuesday
+                      </label>
+                      <label class="weekday-checkbox">
+                        <input
+                          type="checkbox"
+                          value="3"
+                          name="permanent-unavailable"
+                        />
+                        Wednesday
+                      </label>
+                      <label class="weekday-checkbox">
+                        <input
+                          type="checkbox"
+                          value="4"
+                          name="permanent-unavailable"
+                        />
+                        Thursday
+                      </label>
+                      <label class="weekday-checkbox">
+                        <input
+                          type="checkbox"
+                          value="5"
+                          name="permanent-unavailable"
+                        />
+                        Friday
+                      </label>
+                      <label class="weekday-checkbox">
+                        <input
+                          type="checkbox"
+                          value="6"
+                          name="permanent-unavailable"
+                        />
+                        Saturday
+                      </label>
+                    </div>
                   </div>
                   <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Save Availability
+                    <i class="fas fa-save"></i> Save Unavailable Days
                   </button>
-                  <div id="availability-status" class="form-status"></div>
+                  <div
+                    id="permanent-unavailability-status"
+                    class="form-status"
+                  ></div>
+                </form>
+
+                <!-- New section for temporary unavailable days -->
+                <h3>Set Temporarily Unavailable Days</h3>
+                <form id="temporary-unavailability-form">
+                  <div class="form-group">
+                    <label for="unavailable-date-start">From Date</label>
+                    <input type="date" id="unavailable-date-start" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="unavailable-date-end">To Date (Optional)</label>
+                    <input type="date" id="unavailable-date-end" />
+                  </div>
+                  <div class="form-group">
+                    <label for="unavailability-reason">Reason (Optional)</label>
+                    <input
+                      type="text"
+                      id="unavailability-reason"
+                      placeholder="e.g., Vacation, Conference"
+                    />
+                  </div>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-calendar-times"></i> Mark as Unavailable
+                  </button>
+                  <div
+                    id="temporary-unavailability-status"
+                    class="form-status"
+                  ></div>
                 </form>
               </div>
               <div class="availability-list">
-                <h3>Current Availability</h3>
-                <div id="availability-calendar">
-                  <!-- Availability will be loaded dynamically -->
-                </div>
-                <div id="no-availability" class="no-data-message">
-                  No availability set.
+                <h3>Unavailable Days</h3>
+                <div id="unavailable-days-container">
+                  <div class="unavailability-section">
+                    <h4>Permanently Unavailable</h4>
+                    <div id="permanent-unavailability-list">
+                      <!-- Permanent unavailability will be loaded dynamically -->
+                    </div>
+                  </div>
+                  <div class="unavailability-section">
+                    <h4>Temporarily Unavailable</h4>
+                    <div id="temporary-unavailability-list">
+                      <!-- Temporary unavailability will be loaded dynamically -->
+                    </div>
+                    <div id="no-unavailability" class="no-data-message">
+                      No unavailable days set.
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -71,6 +71,8 @@ function formatDateForInput(dateString) {
 }
 
 // Load appointments for the current user
+let rescheduleAppointmentData = []
+
 function loadAppointments() {
   const user = JSON.parse(localStorage.getItem('user'))
   if (!user) return
@@ -99,6 +101,9 @@ function loadAppointments() {
       }
 
       const appointments = data.appointments
+
+      // Store appointment data for reschedule
+      rescheduleAppointmentData = data.appointments
 
       if (appointments.length === 0) {
         tableBody.style.display = 'none'
@@ -342,32 +347,126 @@ function setupEventListeners() {
       const newDate = document.getElementById('new-date').value
       const newTime = document.getElementById('new-time').value
 
+      if (!newDate || !newTime) {
+        showToast('Please select both date and time', TOAST_LEVELS.ERROR)
+        return
+      }
+
+      // Show loading indicator
+      const submitBtn = this.querySelector('button[type="submit"]')
+      const originalText = submitBtn.innerHTML
+      submitBtn.disabled = true
+      submitBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Processing...'
+
+      // First check if the dentist is available on this date
+      const appointmentData = rescheduleAppointmentData.find(
+        (apt) => apt.id == appointmentId
+      )
+
+      if (!appointmentData) {
+        showToast('Error: Could not find appointment data', TOAST_LEVELS.ERROR)
+        submitBtn.disabled = false
+        submitBtn.innerHTML = originalText
+        return
+      }
+
+      // Check clinic availability first
       fetch(
-        `http://localhost:3000/api/appointments/${appointmentId}/reschedule`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date: newDate, time: newTime }),
-        }
+        `http://localhost:3000/api/clinic/check-availability?date=${newDate}`
       )
         .then((response) => {
           if (!response.ok) {
-            throw new Error('Failed to reschedule appointment')
+            throw new Error('Failed to check clinic availability')
+          }
+          return response.json()
+        })
+        .then((clinicData) => {
+          if (!clinicData.success) {
+            throw new Error(
+              clinicData.message || 'Failed to check clinic availability'
+            )
+          }
+          if (!clinicData.available) {
+            throw new Error(
+              clinicData.reason || 'The clinic is closed on the selected date'
+            )
+          }
+
+          // If clinic is open, check dentist availability
+          return fetch(
+            `http://localhost:3000/api/dentist/check-availability?date=${newDate}&dentistName=${encodeURIComponent(
+              appointmentData.dentist
+            )}`
+          )
+        })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Failed to check dentist availability')
           }
           return response.json()
         })
         .then((data) => {
-          if (data.success) {
-            closeModal()
-            // Reload appointments to show updated data
-            loadAppointments()
-          } else {
+          if (!data.success) {
+            throw new Error(data.message || 'Failed to check availability')
+          }
+
+          if (!data.available) {
+            // Throw error with the specific reason from the backend
+            throw new Error(
+              data.reason || 'The dentist is not available on this date'
+            )
+          }
+
+          // If dentist is available, proceed with reschedule
+          return fetch(
+            `http://localhost:3000/api/appointments/${appointmentId}/reschedule`,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ date: newDate, time: newTime }),
+            }
+          )
+        })
+        .then((response) => {
+          if (!response.ok) {
+            // Try to parse error message from backend
+            return response
+              .json()
+              .then((errData) => {
+                throw new Error(
+                  errData.message || 'Failed to reschedule appointment'
+                )
+              })
+              .catch(() => {
+                // Fallback if parsing fails
+                throw new Error(
+                  `Reschedule failed with status: ${response.status}`
+                )
+              })
+          }
+          return response.json()
+        })
+        .then((data) => {
+          if (!data.success) {
             throw new Error(data.message || 'Failed to reschedule appointment')
           }
+          showToast(
+            'Appointment rescheduled successfully!',
+            TOAST_LEVELS.SUCCESS
+          )
+          closeModal()
+          loadAppointments() // Reload appointments
         })
         .catch((error) => {
           console.error('Error rescheduling appointment:', error)
-          alert(`Error: ${error.message}`)
+          // Display the specific error message caught (including availability reasons)
+          showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+        })
+        .finally(() => {
+          // Reset button state
+          submitBtn.disabled = false
+          submitBtn.innerHTML = originalText
         })
     })
 }

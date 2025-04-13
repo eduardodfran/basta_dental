@@ -37,6 +37,35 @@ class User {
   }
 
   /**
+   * Find a user by name
+   * @param {string} name - User name
+   * @returns {Object|null} - User object or null if not found
+   */
+  static async findByName(name) {
+    try {
+      const pool = getPool()
+
+      const [rows] = await pool.query('SELECT * FROM users WHERE name = ?', [
+        name,
+      ])
+
+      if (rows.length === 0) {
+        return null
+      }
+
+      return {
+        id: rows[0].id,
+        name: rows[0].name,
+        email: rows[0].email,
+        role: rows[0].role,
+      }
+    } catch (error) {
+      console.error('Error finding user by name:', error)
+      throw error
+    }
+  }
+
+  /**
    * Create a new user instance
    * @param {Object} userData - User data
    */

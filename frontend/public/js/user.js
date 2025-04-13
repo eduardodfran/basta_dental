@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const feedbackMessage = document.getElementById('feedback-message')
 
   // Define the backend API URL
-  const API_URL = 'http://localhost:3000/api'
+  const API_URL = 'http://localhost:3000/api' // Base API URL
 
   // Toggle between login and signup forms
   if (loginBtn && signupBtn) {
@@ -96,7 +96,8 @@ document.addEventListener('DOMContentLoaded', function () {
       // Clear previous feedback
       showFeedback('Logging in... Please wait.', 'info')
 
-      fetch(`${API_URL}/login`, {
+      fetch(`${API_URL}/users/login`, {
+        // Corrected URL: /api/users/login
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +113,19 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (statusCode === 400) {
               throw new Error('Please provide both email and password')
             } else {
-              throw new Error(`Server error (${statusCode}). Please try again.`)
+              return response
+                .json()
+                .then((errData) => {
+                  throw new Error(
+                    errData.message ||
+                      `Server error (${response.status}). Please try again.`
+                  )
+                })
+                .catch(() => {
+                  throw new Error(
+                    `Server error (${response.status}). Please try again.`
+                  )
+                })
             }
           }
           return response.json()
@@ -174,7 +187,8 @@ document.addEventListener('DOMContentLoaded', function () {
       // Show initial feedback
       showFeedback('Creating your account... Please wait.', 'info')
 
-      fetch(`${API_URL}/signup`, {
+      fetch(`${API_URL}/users/signup`, {
+        // Corrected URL: /api/users/signup
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -194,11 +208,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const statusCode = response.status
 
             if (statusCode === 400) {
-              return response.json().then((data) => {
-                throw new Error(
-                  data.message || 'Invalid data. Please check your form.'
-                )
-              })
+              return response
+                .json()
+                .then((data) => {
+                  throw new Error(
+                    data.message || 'Invalid data. Please check your form.'
+                  )
+                })
+                .catch(() => {
+                  throw new Error(
+                    `Server error (${response.status}). Please try again.`
+                  )
+                })
             } else if (statusCode === 409) {
               throw new Error(
                 'Email is already in use. Please use a different email.'

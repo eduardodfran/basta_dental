@@ -7,13 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Initialize dentist dashboard components
-  initNavbarToggle()
-  initTabs()
-  loadDentistName(user.name)
-  loadDentistProfile(user.id)
-  loadAppointments(user.id)
-  loadAvailability(user.id)
-  setupEventListeners(user.id)
+  initDashboard(user)
 })
 
 // Mobile navbar toggle
@@ -255,90 +249,358 @@ function loadAppointments(userId, showAllDentists = false) {
     })
 }
 
-// Load dentist's availability
+// Load dentist's availability (removed implementation, just loads unavailable days)
 function loadAvailability(userId) {
-  const availabilityContainer = document.getElementById('availability-calendar')
-  const noAvailabilityMsg = document.getElementById('no-availability')
+  // Only load unavailable days now
+  loadPermanentUnavailableDays(userId)
+  loadTemporaryUnavailableDays(userId)
+}
 
-  // Fetch availability from API
-  fetch(`http://localhost:3000/api/dentist/availability/${userId}`)
+// Load permanently unavailable days
+function loadPermanentUnavailableDays(userId) {
+  const permanentUnavailabilityList = document.getElementById(
+    'permanent-unavailability-list'
+  )
+
+  fetch(`http://localhost:3000/api/dentist/unavailability/${userId}/permanent`)
     .then((response) => {
       if (!response.ok) {
-        throw new Error('Failed to fetch availability')
+        throw new Error('Failed to fetch permanent unavailability')
       }
       return response.json()
     })
     .then((data) => {
-      // Clear previous data
-      availabilityContainer.innerHTML = ''
+      permanentUnavailabilityList.innerHTML = ''
 
       if (!data.success) {
-        throw new Error(data.message || 'Failed to load availability')
+        throw new Error(
+          data.message || 'Failed to load permanent unavailability'
+        )
       }
 
-      const availability = data.availability
+      const unavailableDays = data.permanentUnavailability
 
-      if (availability.length === 0) {
-        availabilityContainer.style.display = 'none'
-        noAvailabilityMsg.style.display = 'block'
-      } else {
-        availabilityContainer.style.display = 'block'
-        noAvailabilityMsg.style.display = 'none'
+      if (unavailableDays.length === 0) {
+        permanentUnavailabilityList.innerHTML =
+          '<div class="no-data-message">No permanently unavailable days set.</div>'
+        return
+      }
 
-        // Sort availability by date
-        availability.sort((a, b) => new Date(a.date) - new Date(b.date))
+      // Create an array for day names
+      const dayNames = [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+      ]
 
-        // Add availability items
-        availability.forEach((item) => {
-          // Format date
-          const dateObj = new Date(item.date)
-          const formattedDate = dateObj.toLocaleDateString('en-US', {
-            weekday: 'short',
+      unavailableDays.forEach((day) => {
+        const dayItem = document.createElement('div')
+        dayItem.className = 'unavailability-item'
+        dayItem.dataset.dayId = day.id
+        dayItem.innerHTML = `
+          <div class="permanent-day">${dayNames[day.dayOfWeek]}</div>
+          <div class="actions">
+            <button class="delete-permanent-unavailability" title="Delete unavailable day">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+        `
+        permanentUnavailabilityList.appendChild(dayItem)
+      })
+    })
+    .catch((error) => {
+      console.error('Error loading permanent unavailability:', error)
+      permanentUnavailabilityList.innerHTML = `
+        <div style="text-align: center; color: #721c24; padding: 1rem;">
+          Error loading permanent unavailability: ${error.message}
+        </div>
+      `
+    })
+}
+
+// Load temporarily unavailable days
+function loadTemporaryUnavailableDays(userId) {
+  const temporaryUnavailabilityList = document.getElementById(
+    'temporary-unavailability-list'
+  )
+  const noUnavailabilityMsg = document.getElementById('no-unavailability')
+
+  fetch(`http://localhost:3000/api/dentist/unavailability/${userId}/temporary`)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error('Failed to fetch temporary unavailability')
+      }
+      return response.json()
+    })
+    .then((data) => {
+      temporaryUnavailabilityList.innerHTML = ''
+
+      if (!data.success) {
+        throw new Error(
+          data.message || 'Failed to load temporary unavailability'
+        )
+      }
+
+      const tempUnavailableDates = data.temporaryUnavailability
+
+      if (tempUnavailableDates.length === 0) {
+        temporaryUnavailabilityList.style.display = 'none'
+        noUnavailabilityMsg.style.display = 'block'
+        return
+      }
+
+      temporaryUnavailabilityList.style.display = 'block'
+      noUnavailabilityMsg.style.display = 'none'
+
+      // Sort by start date
+      tempUnavailableDates.sort(
+        (a, b) => new Date(a.startDate) - new Date(b.startDate)
+      )
+
+      tempUnavailableDates.forEach((item) => {
+        // Format dates
+        const startDateObj = new Date(item.startDate)
+        const formattedStartDate = startDateObj.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        })
+
+        let dateRangeText = formattedStartDate
+
+        if (item.endDate) {
+          const endDateObj = new Date(item.endDate)
+          const formattedEndDate = endDateObj.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
           })
+          dateRangeText += ` to ${formattedEndDate}`
+        }
 
-          // Format times
-          const startTimeObj = new Date(`1970-01-01T${item.timeStart}`)
-          const endTimeObj = new Date(`1970-01-01T${item.timeEnd}`)
-
-          const formattedStartTime = startTimeObj.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-
-          const formattedEndTime = endTimeObj.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-
-          const availabilityItem = document.createElement('div')
-          availabilityItem.className = 'availability-item'
-          availabilityItem.dataset.availabilityId = item.id
-          availabilityItem.innerHTML = `
-            <div class="date-time">
-              <div>${formattedDate}</div>
-              <div>${formattedStartTime} - ${formattedEndTime}</div>
-            </div>
-            <div class="actions">
-              <button class="delete-availability" title="Delete availability">
-                <i class="fas fa-trash-alt"></i>
-              </button>
-            </div>
-          `
-          availabilityContainer.appendChild(availabilityItem)
-        })
-      }
+        const tempItem = document.createElement('div')
+        tempItem.className = 'unavailability-item'
+        tempItem.dataset.unavailabilityId = item.id
+        tempItem.innerHTML = `
+          <div>
+            <div class="date-range">${dateRangeText}</div>
+            ${item.reason ? `<div class="reason">${item.reason}</div>` : ''}
+          </div>
+          <div class="actions">
+            <button class="delete-temporary-unavailability" title="Delete unavailable period">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+        `
+        temporaryUnavailabilityList.appendChild(tempItem)
+      })
     })
     .catch((error) => {
-      console.error('Error loading availability:', error)
-      availabilityContainer.innerHTML = `
+      console.error('Error loading temporary unavailability:', error)
+      temporaryUnavailabilityList.innerHTML = `
         <div style="text-align: center; color: #721c24; padding: 1rem;">
-          Error loading availability: ${error.message}
+          Error loading temporary unavailability: ${error.message}
         </div>
       `
     })
+}
+
+// Save permanent unavailable days
+function savePermanentUnavailability(userId, daysOfWeek) {
+  return fetch(
+    `http://localhost:3000/api/dentist/unavailability/${userId}/permanent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        daysOfWeek,
+      }),
+    }
+  )
+    .then((response) => {
+      if (!response.ok) {
+        return response
+          .json()
+          .then((data) => {
+            throw new Error(
+              data.message || 'Failed to save permanent unavailability'
+            )
+          })
+          .catch(() => {
+            throw new Error(`Server error: ${response.status}`)
+          })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(
+          data.message || 'Failed to save permanent unavailability'
+        )
+      }
+      return data
+    })
+}
+
+// Save temporary unavailable days
+function saveTemporaryUnavailability(userId, startDate, endDate, reason) {
+  return fetch(
+    `http://localhost:3000/api/dentist/unavailability/${userId}/temporary`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        startDate,
+        endDate,
+        reason,
+      }),
+    }
+  )
+    .then((response) => {
+      if (!response.ok) {
+        return response
+          .json()
+          .then((data) => {
+            throw new Error(
+              data.message || 'Failed to save temporary unavailability'
+            )
+          })
+          .catch(() => {
+            throw new Error(`Server error: ${response.status}`)
+          })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(
+          data.message || 'Failed to save temporary unavailability'
+        )
+      }
+      return data
+    })
+}
+
+// Delete permanent unavailability
+function deletePermanentUnavailability(userId, dayId) {
+  return fetch(
+    `http://localhost:3000/api/dentist/unavailability/${userId}/permanent/${dayId}`,
+    {
+      method: 'DELETE',
+    }
+  )
+    .then((response) => {
+      if (!response.ok) {
+        return response
+          .json()
+          .then((data) => {
+            throw new Error(
+              data.message || 'Failed to delete permanent unavailability'
+            )
+          })
+          .catch(() => {
+            throw new Error(`Server error: ${response.status}`)
+          })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(
+          data.message || 'Failed to delete permanent unavailability'
+        )
+      }
+      return data
+    })
+}
+
+// Delete temporary unavailability
+function deleteTemporaryUnavailability(userId, unavailabilityId) {
+  return fetch(
+    `http://localhost:3000/api/dentist/unavailability/${userId}/temporary/${unavailabilityId}`,
+    {
+      method: 'DELETE',
+    }
+  )
+    .then((response) => {
+      if (!response.ok) {
+        return response
+          .json()
+          .then((data) => {
+            throw new Error(
+              data.message || 'Failed to delete temporary unavailability'
+            )
+          })
+          .catch(() => {
+            throw new Error(`Server error: ${response.status}`)
+          })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(
+          data.message || 'Failed to delete temporary unavailability'
+        )
+      }
+      return data
+    })
+}
+
+// Show status message for permanent unavailability
+function showPermanentUnavailabilityStatus(message, type) {
+  const statusEl = document.getElementById('permanent-unavailability-status')
+  statusEl.textContent = message
+  statusEl.className = 'form-status'
+
+  if (type === 'success') {
+    statusEl.classList.add('success')
+  } else if (type === 'error') {
+    statusEl.classList.add('error')
+  } else {
+    statusEl.classList.add('info')
+  }
+
+  statusEl.style.display = 'block'
+
+  // Auto-hide success messages after 3 seconds
+  if (type === 'success') {
+    setTimeout(() => {
+      statusEl.style.display = 'none'
+    }, 3000)
+  }
+}
+
+// Show status message for temporary unavailability
+function showTemporaryUnavailabilityStatus(message, type) {
+  const statusEl = document.getElementById('temporary-unavailability-status')
+  statusEl.textContent = message
+  statusEl.className = 'form-status'
+
+  if (type === 'success') {
+    statusEl.classList.add('success')
+  } else if (type === 'error') {
+    statusEl.classList.add('error')
+  } else {
+    statusEl.classList.add('info')
+  }
+
+  statusEl.style.display = 'block'
+
+  // Auto-hide success messages after 3 seconds
+  if (type === 'success') {
+    setTimeout(() => {
+      statusEl.style.display = 'none'
+    }, 3000)
+  }
 }
 
 // Open appointment details modal
@@ -660,40 +922,6 @@ function savePatientNotes(userId, patientId, appointmentId, notes) {
     })
 }
 
-// Save dentist availability
-function saveAvailability(userId, date, timeStart, timeEnd) {
-  return fetch(`http://localhost:3000/api/dentist/availability/${userId}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      date,
-      timeStart,
-      timeEnd,
-    }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return response
-          .json()
-          .then((data) => {
-            throw new Error(data.message || 'Failed to save availability')
-          })
-          .catch(() => {
-            throw new Error(`Server error: ${response.status}`)
-          })
-      }
-      return response.json()
-    })
-    .then((data) => {
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to save availability')
-      }
-      return data
-    })
-}
-
 // Update dentist profile
 function updateDentistProfile(userId, specialization, bio) {
   return fetch(`http://localhost:3000/api/dentists/${userId}`, {
@@ -956,56 +1184,165 @@ function setupEventListeners(userId) {
     )
   })
 
-  // Availability form submission
+  // Permanent unavailability form submission
   document
-    .getElementById('availability-form')
+    .getElementById('permanent-unavailability-form')
     .addEventListener('submit', function (e) {
       e.preventDefault()
 
-      const date = document.getElementById('availability-date').value
-      const timeStart = document.getElementById('time-start').value
-      const timeEnd = document.getElementById('time-end').value
+      const checkboxes = document.querySelectorAll(
+        'input[name="permanent-unavailable"]:checked'
+      )
 
-      // Validate times
-      if (timeStart >= timeEnd) {
-        showAvailabilityStatus('End time must be after start time', 'error')
+      if (checkboxes.length === 0) {
+        showPermanentUnavailabilityStatus(
+          'Please select at least one day of the week',
+          'error'
+        )
         return
       }
 
-      showAvailabilityStatus('Saving availability...', 'info')
+      const daysOfWeek = Array.from(checkboxes).map((cb) => parseInt(cb.value))
 
-      saveAvailability(userId, date, timeStart, timeEnd)
+      showPermanentUnavailabilityStatus(
+        'Saving permanent unavailability...',
+        'info'
+      )
+
+      savePermanentUnavailability(userId, daysOfWeek)
         .then(() => {
-          showAvailabilityStatus('Availability saved successfully!', 'success')
+          showPermanentUnavailabilityStatus(
+            'Permanent unavailability saved successfully!',
+            'success'
+          )
 
-          // Clear form
-          document.getElementById('availability-date').value = ''
-          document.getElementById('time-start').value = ''
-          document.getElementById('time-end').value = ''
+          // Uncheck all checkboxes
+          document
+            .querySelectorAll('input[name="permanent-unavailable"]')
+            .forEach((cb) => {
+              cb.checked = false
+            })
 
-          // Reload availability
-          loadAvailability(userId)
+          // Reload permanent unavailable days
+          loadPermanentUnavailableDays(userId)
         })
         .catch((error) => {
-          showAvailabilityStatus('Error: ' + error.message, 'error')
+          showPermanentUnavailabilityStatus('Error: ' + error.message, 'error')
         })
     })
 
-  // Delete availability (delegation)
+  // Temporary unavailability form submission
   document
-    .getElementById('availability-calendar')
+    .getElementById('temporary-unavailability-form')
+    .addEventListener('submit', function (e) {
+      e.preventDefault()
+
+      const startDate = document.getElementById('unavailable-date-start').value
+      const endDate = document.getElementById('unavailable-date-end').value
+      const reason = document
+        .getElementById('unavailability-reason')
+        .value.trim()
+
+      if (!startDate) {
+        showTemporaryUnavailabilityStatus('Please select a start date', 'error')
+        return
+      }
+
+      // If end date is provided, ensure it's not before start date
+      if (endDate && endDate < startDate) {
+        showTemporaryUnavailabilityStatus(
+          'End date cannot be before start date',
+          'error'
+        )
+        return
+      }
+
+      showTemporaryUnavailabilityStatus(
+        'Saving temporary unavailability...',
+        'info'
+      )
+
+      saveTemporaryUnavailability(userId, startDate, endDate || null, reason)
+        .then(() => {
+          showTemporaryUnavailabilityStatus(
+            'Temporary unavailability saved successfully!',
+            'success'
+          )
+
+          // Clear form
+          document.getElementById('unavailable-date-start').value = ''
+          document.getElementById('unavailable-date-end').value = ''
+          document.getElementById('unavailability-reason').value = ''
+
+          // Reload temporary unavailable days
+          loadTemporaryUnavailableDays(userId)
+        })
+        .catch((error) => {
+          showTemporaryUnavailabilityStatus('Error: ' + error.message, 'error')
+        })
+    })
+
+  // Delete permanent unavailability (delegation)
+  document
+    .getElementById('permanent-unavailability-list')
     .addEventListener('click', function (e) {
       const target = e.target.closest('button')
-      if (!target || !target.classList.contains('delete-availability')) return
+      if (
+        !target ||
+        !target.classList.contains('delete-permanent-unavailability')
+      )
+        return
 
-      const item = target.closest('.availability-item')
-      const availabilityId = item.dataset.availabilityId
+      const item = target.closest('.unavailability-item')
+      const dayId = item.dataset.dayId
 
-      if (confirm('Delete this availability?')) {
-        // Implement this if needed in future
-        console.log('Would delete availability ID:', availabilityId)
-        // For now, just reload to remove from view
-        loadAvailability(userId)
+      if (confirm('Delete this permanently unavailable day?')) {
+        deletePermanentUnavailability(userId, dayId)
+          .then(() => {
+            showPermanentUnavailabilityStatus(
+              'Permanent unavailability deleted successfully!',
+              'success'
+            )
+            loadPermanentUnavailableDays(userId)
+          })
+          .catch((error) => {
+            showPermanentUnavailabilityStatus(
+              'Error: ' + error.message,
+              'error'
+            )
+          })
+      }
+    })
+
+  // Delete temporary unavailability (delegation)
+  document
+    .getElementById('temporary-unavailability-list')
+    .addEventListener('click', function (e) {
+      const target = e.target.closest('button')
+      if (
+        !target ||
+        !target.classList.contains('delete-temporary-unavailability')
+      )
+        return
+
+      const item = target.closest('.unavailability-item')
+      const unavailabilityId = item.dataset.unavailabilityId
+
+      if (confirm('Delete this temporary unavailability period?')) {
+        deleteTemporaryUnavailability(userId, unavailabilityId)
+          .then(() => {
+            showTemporaryUnavailabilityStatus(
+              'Temporary unavailability deleted successfully!',
+              'success'
+            )
+            loadTemporaryUnavailableDays(userId)
+          })
+          .catch((error) => {
+            showTemporaryUnavailabilityStatus(
+              'Error: ' + error.message,
+              'error'
+            )
+          })
       }
     })
 
@@ -1132,4 +1469,17 @@ function checkDentistAuth() {
     window.location.replace('login.html')
     return null
   }
+}
+
+// Initialize dentist dashboard components
+function initDashboard(user) {
+  initNavbarToggle()
+  initTabs()
+  loadDentistName(user.name)
+  loadDentistProfile(user.id)
+  loadAppointments(user.id)
+  // No longer loading availability as we're only handling unavailable days
+  loadPermanentUnavailableDays(user.id)
+  loadTemporaryUnavailableDays(user.id)
+  setupEventListeners(user.id)
 }
