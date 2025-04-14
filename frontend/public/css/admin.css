@@ -640,9 +640,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 0; /* Reduced padding, use border-bottom */
-  border-bottom: 1px solid #e9ecef;
-  margin-bottom: 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid #e1e4e8;
+  margin-bottom: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  transition: background-color 0.2s;
 }
 
 .unavailability-item:last-child {
@@ -685,6 +688,9 @@
   border-radius: 4px;
   margin-top: 1rem;
 }
+
+
+
 
 /* Database setup instructions styles */
 .db-setup-instructions {

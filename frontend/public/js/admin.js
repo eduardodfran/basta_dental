@@ -87,6 +87,10 @@ function initTabs() {
       if (button.getAttribute('data-tab') === 'clinic-availability') {
         loadClinicAvailability()
       }
+      // Load transferable appointments when that tab is clicked
+      if (button.getAttribute('data-tab') === 'transferable-appointments') {
+        loadTransferableAppointments()
+      }
     })
   })
 }
@@ -380,8 +384,376 @@ function updateUserRole(event) {
 
 // Load clinic availability settings
 function loadClinicAvailability() {
-  console.log('loadClinicAvailability function called - needs implementation')
-  // Placeholder: Add logic to fetch and display clinic availability
+  loadPermanentClinicUnavailability()
+  loadTemporaryClinicUnavailability()
+}
+
+// Load permanent clinic unavailability (days of week)
+function loadPermanentClinicUnavailability() {
+  const listElement = document.getElementById(
+    'clinic-permanent-unavailability-list'
+  )
+  const formCheckboxes = document.querySelectorAll(
+    'input[name="clinic-permanent-unavailable"]'
+  )
+
+  if (!listElement) return
+
+  listElement.innerHTML = '<p>Loading permanent closures...</p>'
+  // Reset checkboxes
+  formCheckboxes.forEach((cb) => (cb.checked = false))
+
+  fetch('http://localhost:3000/api/clinic/unavailability/permanent') // Corrected URL
+    .then((response) => {
+      // Check for non-JSON 404 response first
+      if (!response.ok && response.status === 404) {
+        throw new Error('Permanent unavailability endpoint not found (404)')
+      }
+      // Check for other non-ok responses that might be JSON
+      if (!response.ok) {
+        return response.json().then((err) => {
+          throw new Error(
+            err.message || `HTTP error! status: ${response.status}`
+          )
+        })
+      }
+      // Check content type before parsing JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        return response.text().then((text) => {
+          throw new TypeError(
+            `Expected JSON but received ${contentType}. Response: ${text.substring(
+              0,
+              100
+            )}...`
+          )
+        })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(
+          data.message || 'Failed to load permanent unavailability'
+        )
+      }
+      listElement.innerHTML = '' // Clear loading
+      const days = [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+      ]
+
+      if (data.permanentUnavailability.length === 0) {
+        listElement.innerHTML = '<p>No permanent closure days set.</p>'
+      } else {
+        data.permanentUnavailability.forEach((item) => {
+          const dayName = days[item.dayOfWeek]
+          const listItem = document.createElement('div')
+          listItem.className = 'unavailability-item'
+          listItem.innerHTML = `
+            <div class="details">
+              <div class="day-name">${dayName}</div>
+            </div>
+            <div class="actions">
+              <button class="delete-clinic-permanent-unavailability" data-day-id="${item.id}" title="Remove permanent closure for ${dayName}">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          `
+          listElement.appendChild(listItem)
+
+          // Check the corresponding checkbox in the form
+          formCheckboxes.forEach((cb) => {
+            if (parseInt(cb.value) === item.dayOfWeek) {
+              cb.checked = true
+            }
+          })
+        })
+      }
+    })
+    .catch((error) => {
+      console.error('Error loading permanent clinic unavailability:', error)
+      listElement.innerHTML = `<p style="color: #721c24;">Error: ${error.message}</p>`
+    })
+}
+
+// Load temporary clinic unavailability (date ranges)
+function loadTemporaryClinicUnavailability() {
+  const listElement = document.getElementById(
+    'clinic-temporary-unavailability-list'
+  )
+  const noDataMsg = document.getElementById(
+    'clinic-no-temporary-unavailability'
+  )
+
+  if (!listElement || !noDataMsg) return
+
+  listElement.innerHTML = '<p>Loading temporary closures...</p>'
+  noDataMsg.style.display = 'none'
+
+  fetch('http://localhost:3000/api/clinic/unavailability/temporary') // Corrected URL
+    .then((response) => {
+      // Check for non-JSON 404 response first
+      if (!response.ok && response.status === 404) {
+        throw new Error('Temporary unavailability endpoint not found (404)')
+      }
+      // Check for other non-ok responses that might be JSON
+      if (!response.ok) {
+        return response.json().then((err) => {
+          throw new Error(
+            err.message || `HTTP error! status: ${response.status}`
+          )
+        })
+      }
+      // Check content type before parsing JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        return response.text().then((text) => {
+          throw new TypeError(
+            `Expected JSON but received ${contentType}. Response: ${text.substring(
+              0,
+              100
+            )}...`
+          )
+        })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(
+          data.message || 'Failed to load temporary unavailability'
+        )
+      }
+      listElement.innerHTML = '' // Clear loading
+
+      if (data.temporaryUnavailability.length === 0) {
+        noDataMsg.style.display = 'block'
+      } else {
+        noDataMsg.style.display = 'none'
+        data.temporaryUnavailability.forEach((item) => {
+          let dateRangeText = new Date(item.start_date).toLocaleDateString()
+          if (item.end_date && item.end_date !== item.start_date) {
+            dateRangeText += ` - ${new Date(
+              item.end_date
+            ).toLocaleDateString()}`
+          }
+
+          const listItem = document.createElement('div')
+          listItem.className = 'unavailability-item'
+          listItem.innerHTML = `
+            <div class="details">
+              <div class="date-range">${dateRangeText}</div>
+              ${item.reason ? `<div class="reason">${item.reason}</div>` : ''}
+            </div>
+            <div class="actions">
+              <button class="delete-clinic-temporary-unavailability" data-unavailability-id="${
+                item.id
+              }" title="Delete temporary closure period">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          `
+          listElement.appendChild(listItem)
+        })
+      }
+    })
+    .catch((error) => {
+      console.error('Error loading temporary clinic unavailability:', error)
+      listElement.innerHTML = `<p style="color: #721c24;">Error: ${error.message}</p>`
+      noDataMsg.style.display = 'none'
+    })
+}
+
+// Save permanent clinic unavailability
+async function savePermanentClinicUnavailability(daysOfWeek) {
+  showPermanentClinicUnavailabilityStatus('Saving...', 'info')
+  try {
+    const response = await fetch(
+      'http://localhost:3000/api/clinic/unavailability/permanent', // Corrected URL
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ daysOfWeek }),
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`)
+    }
+
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to save permanent unavailability')
+    }
+
+    showPermanentClinicUnavailabilityStatus(
+      'Permanent closures saved successfully!',
+      'success'
+    )
+    loadPermanentClinicUnavailability() // Reload the list
+  } catch (error) {
+    showPermanentClinicUnavailabilityStatus(`Error: ${error.message}`, 'error')
+    console.error('Error saving permanent clinic unavailability:', error)
+  }
+}
+
+// Save temporary clinic unavailability
+async function saveTemporaryClinicUnavailability(startDate, endDate, reason) {
+  showTemporaryClinicUnavailabilityStatus('Saving...', 'info')
+  try {
+    const response = await fetch(
+      'http://localhost:3000/api/clinic/unavailability/temporary', // Corrected URL
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ startDate, endDate: endDate || null, reason }), // Send null if endDate is empty
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`)
+    }
+
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to save temporary unavailability')
+    }
+
+    showTemporaryClinicUnavailabilityStatus(
+      'Temporary closure saved successfully!',
+      'success'
+    )
+    // Clear form
+    document.getElementById('clinic-unavailable-date-start').value = ''
+    document.getElementById('clinic-unavailable-date-end').value = ''
+    document.getElementById('clinic-unavailability-reason').value = ''
+    loadTemporaryClinicUnavailability() // Reload the list
+  } catch (error) {
+    showTemporaryClinicUnavailabilityStatus(`Error: ${error.message}`, 'error')
+    console.error('Error saving temporary clinic unavailability:', error)
+  }
+}
+
+// Delete permanent clinic unavailability
+async function deletePermanentClinicUnavailability(dayId) {
+  showPermanentClinicUnavailabilityStatus('Deleting...', 'info')
+  try {
+    const response = await fetch(
+      `http://localhost:3000/api/clinic/unavailability/permanent/${dayId}`, // Corrected URL
+      {
+        method: 'DELETE',
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`)
+    }
+
+    if (!data.success) {
+      throw new Error(
+        data.message || 'Failed to delete permanent unavailability'
+      )
+    }
+
+    showPermanentClinicUnavailabilityStatus(
+      'Permanent closure removed successfully!',
+      'success'
+    )
+    loadPermanentClinicUnavailability() // Reload the list
+  } catch (error) {
+    showPermanentClinicUnavailabilityStatus(`Error: ${error.message}`, 'error')
+    console.error('Error deleting permanent clinic unavailability:', error)
+  }
+}
+
+// Delete temporary clinic unavailability
+async function deleteTemporaryClinicUnavailability(unavailabilityId) {
+  showTemporaryClinicUnavailabilityStatus('Deleting...', 'info')
+  try {
+    const response = await fetch(
+      `http://localhost:3000/api/clinic/unavailability/temporary/${unavailabilityId}`, // Corrected URL
+      {
+        method: 'DELETE',
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`)
+    }
+
+    if (!data.success) {
+      throw new Error(
+        data.message || 'Failed to delete temporary unavailability'
+      )
+    }
+
+    showTemporaryClinicUnavailabilityStatus(
+      'Temporary closure removed successfully!',
+      'success'
+    )
+    loadTemporaryClinicUnavailability() // Reload the list
+  } catch (error) {
+    showTemporaryClinicUnavailabilityStatus(`Error: ${error.message}`, 'error')
+    console.error('Error deleting temporary clinic unavailability:', error)
+  }
+}
+
+// Show status message for permanent clinic unavailability
+function showPermanentClinicUnavailabilityStatus(message, type) {
+  const statusEl = document.getElementById(
+    'clinic-permanent-unavailability-status'
+  )
+  if (!statusEl) return
+  statusEl.textContent = message
+  statusEl.className = 'form-status' // Reset classes
+  if (type === 'success') statusEl.classList.add('success')
+  else if (type === 'error') statusEl.classList.add('error')
+  else statusEl.classList.add('info')
+  statusEl.style.display = 'block'
+
+  // Auto-hide success/info messages
+  if (type === 'success' || type === 'info') {
+    setTimeout(() => {
+      statusEl.style.display = 'none'
+    }, 3000)
+  }
+}
+
+// Show status message for temporary clinic unavailability
+function showTemporaryClinicUnavailabilityStatus(message, type) {
+  const statusEl = document.getElementById(
+    'clinic-temporary-unavailability-status'
+  )
+  if (!statusEl) return
+  statusEl.textContent = message
+  statusEl.className = 'form-status' // Reset classes
+  if (type === 'success') statusEl.classList.add('success')
+  else if (type === 'error') statusEl.classList.add('error')
+  else statusEl.classList.add('info')
+  statusEl.style.display = 'block'
+
+  // Auto-hide success/info messages
+  if (type === 'success' || type === 'info') {
+    setTimeout(() => {
+      statusEl.style.display = 'none'
+    }, 3000)
+  }
 }
 
 // Load analytics data
@@ -540,26 +912,23 @@ function loadTransferableAppointments() {
   const tableBody = document.getElementById('transferable-appointments-data')
   const noDataMsg = document.getElementById('no-transferable-appointments')
 
-  if (!tableBody) {
-    console.error('Transferable appointments table body not found in DOM')
-    return
-  }
+  if (!tableBody) return // Ensure the table body exists
 
-  // Show loading message - Ensure colspan is 6
+  // Show loading message
   tableBody.innerHTML =
     '<tr><td colspan="6" style="text-align: center;">Loading transferable appointments...</td></tr>'
+  if (noDataMsg) noDataMsg.style.display = 'none'
 
   fetch('http://localhost:3000/api/appointments/transferable')
     .then((response) => {
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch transferable appointments: ${response.status}`
-        )
+        throw new Error('Failed to fetch transferable appointments')
       }
       return response.json()
     })
     .then((data) => {
-      tableBody.innerHTML = '' // Clear loading message
+      // Clear loading message
+      tableBody.innerHTML = ''
 
       if (!data.success) {
         throw new Error(
@@ -594,10 +963,7 @@ function loadTransferableAppointments() {
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric',
-                  timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
                 })
-              } else {
-                formattedDate = 'Invalid Date' // Handle invalid date object
               }
             }
 
@@ -605,15 +971,11 @@ function loadTransferableAppointments() {
               const [hours, minutes] = apt.time.split(':')
               if (!isNaN(hours) && !isNaN(minutes)) {
                 const timeObj = new Date()
-                // Set hours and minutes based on the time string
-                timeObj.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0)
+                timeObj.setHours(hours, minutes, 0)
                 formattedTime = timeObj.toLocaleTimeString('en-US', {
                   hour: '2-digit',
                   minute: '2-digit',
-                  hour12: true, // Use AM/PM format
                 })
-              } else {
-                formattedTime = 'Invalid Time' // Handle invalid time string
               }
             }
           } catch (err) {
@@ -629,11 +991,10 @@ function loadTransferableAppointments() {
 
           // Correctly align data with table columns
           row.innerHTML = `
-            <td>${apt.id}</td>
+            <td>${formattedDate}<br>${formattedTime}</td>
             <td>${apt.userName || 'Unknown'}</td>
             <td>${apt.service}</td>
-            <td>${formattedDate}<br>${formattedTime}</td>
-            <td>${apt.original_dentist || 'N/A'}</td>
+            <td>${apt.original_dentist || 'N/A'}</td> 
             <td>
               <span class="appointment-status status-${
                 apt.transfer_status || 'available'
@@ -644,27 +1005,51 @@ function loadTransferableAppointments() {
                 }
               </span>
             </td>
+            <td class="actions-cell">
+              <button class="action-btn btn-view" title="View Details">
+                <i class="fas fa-eye"></i>
+              </button>
+              ${
+                apt.transfer_status === 'available'
+                  ? `
+                <button class="action-btn btn-assign-transfer" title="Assign to Dentist">
+                  <i class="fas fa-user-md"></i>
+                </button>
+              `
+                  : ''
+              }
+            </td>
           `
-
           tableBody.appendChild(row)
         })
-        // Apply filters after loading data
-        filterTransferableAppointments()
+
+        // Add event listeners after rows are added
+        setupTransferableActionListeners(tableBody)
       }
     })
     .catch((error) => {
       console.error('Error loading transferable appointments:', error)
-      // Ensure error message also uses colspan 6
-      tableBody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align: center; color: #721c24;">
-            Error: ${error.message}
-          </td>
-        </tr>
-      `
-      tableBody.style.display = 'table-row-group' // Ensure table body is visible for error
-      if (noDataMsg) noDataMsg.style.display = 'none' // Hide no data message
+      tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #721c24;">
+        Error loading appointments: ${error.message}</td></tr>`
+      if (noDataMsg) noDataMsg.style.display = 'none'
     })
+}
+
+// Setup event listeners for transferable appointment actions
+function setupTransferableActionListeners(tableBody) {
+  tableBody.querySelectorAll('.btn-view').forEach((btn) => {
+    btn.addEventListener('click', function () {
+      const appointmentId = this.closest('tr').dataset.appointmentId
+      openAppointmentModal(appointmentId) // Use admin's modal
+    })
+  })
+
+  tableBody.querySelectorAll('.btn-assign-transfer').forEach((btn) => {
+    btn.addEventListener('click', function () {
+      const appointmentId = this.closest('tr').dataset.appointmentId
+      openAssignDentistModal(appointmentId)
+    })
+  })
 }
 
 // Filter transferable appointments
@@ -1060,6 +1445,97 @@ function setupEventListeners() {
         openChangeRoleModal(userId, userRole)
       } else {
         showToast('Could not get user ID or role.', TOAST_LEVELS.ERROR)
+      }
+    })
+  }
+
+  // Clinic Availability Forms & Lists
+  const permanentClinicForm = document.getElementById(
+    'clinic-permanent-unavailability-form'
+  )
+  const temporaryClinicForm = document.getElementById(
+    'clinic-temporary-unavailability-form'
+  )
+  const permanentClinicList = document.getElementById(
+    'clinic-permanent-unavailability-list'
+  )
+  const temporaryClinicList = document.getElementById(
+    'clinic-temporary-unavailability-list'
+  )
+
+  // Permanent Clinic Closure Form Submission
+  if (permanentClinicForm) {
+    permanentClinicForm.addEventListener('submit', function (e) {
+      e.preventDefault()
+      const selectedDays = Array.from(
+        document.querySelectorAll(
+          'input[name="clinic-permanent-unavailable"]:checked'
+        )
+      ).map((cb) => parseInt(cb.value))
+      savePermanentClinicUnavailability(selectedDays)
+    })
+  }
+
+  // Temporary Clinic Closure Form Submission
+  if (temporaryClinicForm) {
+    temporaryClinicForm.addEventListener('submit', function (e) {
+      e.preventDefault()
+      const startDate = document.getElementById(
+        'clinic-unavailable-date-start'
+      ).value
+      const endDate = document.getElementById(
+        'clinic-unavailable-date-end'
+      ).value
+      const reason = document.getElementById(
+        'clinic-unavailability-reason'
+      ).value
+
+      if (!startDate) {
+        showTemporaryClinicUnavailabilityStatus(
+          'Please select a start date.',
+          'error'
+        )
+        return
+      }
+      if (endDate && endDate < startDate) {
+        showTemporaryClinicUnavailabilityStatus(
+          'End date cannot be before start date.',
+          'error'
+        )
+        return
+      }
+      saveTemporaryClinicUnavailability(startDate, endDate, reason)
+    })
+  }
+
+  // Delete Permanent Clinic Closure (Event Delegation)
+  if (permanentClinicList) {
+    permanentClinicList.addEventListener('click', function (e) {
+      const target = e.target.closest(
+        'button.delete-clinic-permanent-unavailability'
+      )
+      if (target) {
+        const dayId = target.dataset.dayId
+        showConfirmDialog(
+          'Are you sure you want to remove this permanent closure day?',
+          () => deletePermanentClinicUnavailability(dayId)
+        )
+      }
+    })
+  }
+
+  // Delete Temporary Clinic Closure (Event Delegation)
+  if (temporaryClinicList) {
+    temporaryClinicList.addEventListener('click', function (e) {
+      const target = e.target.closest(
+        'button.delete-clinic-temporary-unavailability'
+      )
+      if (target) {
+        const unavailabilityId = target.dataset.unavailabilityId
+        showConfirmDialog(
+          'Are you sure you want to remove this temporary closure period?',
+          () => deleteTemporaryClinicUnavailability(unavailabilityId)
+        )
       }
     })
   }
