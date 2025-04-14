@@ -20,22 +20,40 @@ function initNavbarToggle() {
 
 // Initialize tabs
 function initTabs() {
-  const tabButtons = document.querySelectorAll('.tab-btn')
-  const tabPanes = document.querySelectorAll('.tab-pane')
+  const tabsContainer = document.querySelector('.dentist-tabs')
+  const tabContent = document.querySelector('.tab-content') // Get the main content container
+  const tabPanes = tabContent?.querySelectorAll('.tab-pane') // Select panes *inside* the container
 
-  tabButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      // Remove active class from all buttons
-      tabButtons.forEach((btn) => btn.classList.remove('active'))
-      // Add active class to clicked button
-      button.classList.add('active')
+  if (!tabsContainer || !tabContent || !tabPanes) return // Exit if elements not found
 
-      // Hide all tab panes
-      tabPanes.forEach((pane) => pane.classList.remove('active'))
-      // Show the corresponding tab pane
-      const tabId = `${button.getAttribute('data-tab')}-tab`
-      document.getElementById(tabId).classList.add('active')
-    })
+  // Use event delegation on the container
+  tabsContainer.addEventListener('click', function (e) {
+    // Check if a tab button was clicked
+    const clickedTab = e.target.closest('.tab-btn')
+    if (!clickedTab) return // Exit if click wasn't on a button
+
+    const tabId = clickedTab.dataset.tab
+
+    // Remove active class from all buttons and panes
+    tabsContainer
+      .querySelectorAll('.tab-btn')
+      .forEach((btn) => btn.classList.remove('active'))
+    // Ensure *all* panes within the container are deactivated
+    tabContent
+      .querySelectorAll('.tab-pane')
+      .forEach((pane) => pane.classList.remove('active'))
+
+    // Add active class to the clicked button and corresponding pane
+    clickedTab.classList.add('active')
+    const activePane = tabContent.querySelector(`#${tabId}-tab`) // Find pane within the container
+    if (activePane) {
+      activePane.classList.add('active')
+    }
+
+    // Special handling if the transferable tab is clicked (e.g., load data)
+    if (tabId === 'transferable') {
+      loadTransferableAppointments()
+    }
   })
 }
 
@@ -46,7 +64,7 @@ function loadDentistName(name) {
 
 // Load dentist profile data
 function loadDentistProfile(userId) {
-  fetch(`http://localhost:3000/api/dentists/${userId}`)
+  fetch(`http://localhost:3000/api/users/dentists/${userId}`)
     .then((response) => {
       if (!response.ok) {
         throw new Error('Failed to fetch dentist profile')
@@ -221,17 +239,6 @@ function loadAppointments(userId, showAllDentists = false) {
                   ? `
                 <button class="action-btn btn-cancel" title="Cancel Appointment">
                   <i class="fas fa-times"></i>
-                </button>
-              `
-                  : ''
-              }
-              ${
-                !isCurrentDentistAppointment &&
-                showAllDentists &&
-                apt.status === 'pending'
-                  ? `
-                <button class="action-btn btn-assign" title="Assign to Me">
-                  <i class="fas fa-user-plus"></i>
                 </button>
               `
                   : ''
@@ -711,10 +718,15 @@ function openAppointmentModal(appointmentId, userId, patientId, patientName) {
             ? `
         <div class="detail-item">
           <div class="detail-label">Notes:</div>
-          <div class="detail-value">${apt.notes}</div>
+          <div class="detail-value" id="modal-appointment-notes">${apt.notes}</div> 
         </div>
         `
-            : ''
+            : `
+        <div class="detail-item" id="modal-notes-container" style="display: none;"> 
+          <div class="detail-label">Notes:</div>
+          <div class="detail-value" id="modal-appointment-notes"></div>
+        </div>
+        `
         }
       `
 
@@ -722,15 +734,34 @@ function openAppointmentModal(appointmentId, userId, patientId, patientName) {
       const confirmBtn = document.getElementById('confirm-appointment')
       const completeBtn = document.getElementById('complete-appointment')
       const cancelBtn = document.getElementById('cancel-appointment')
+      const transferBtn = document.getElementById('transfer-appointment') // Get the transfer button
+
+      // Get current user's name
+      const currentUser = JSON.parse(localStorage.getItem('user'))
+      const isCurrentDentistAppointment = apt.dentist === currentUser.name
+      const isTransferableStatus =
+        apt.status !== 'cancelled' && apt.status !== 'completed'
 
       confirmBtn.style.display =
-        apt.status === 'pending' ? 'inline-block' : 'none'
-      completeBtn.style.display =
-        apt.status === 'confirmed' ? 'inline-block' : 'none'
-      cancelBtn.style.display =
-        apt.status !== 'cancelled' && apt.status !== 'completed'
+        isCurrentDentistAppointment && apt.status === 'pending'
           ? 'inline-block'
           : 'none'
+      completeBtn.style.display =
+        isCurrentDentistAppointment && apt.status === 'confirmed'
+          ? 'inline-block'
+          : 'none'
+      cancelBtn.style.display =
+        isCurrentDentistAppointment && isTransferableStatus
+          ? 'inline-block'
+          : 'none'
+
+      // Show transfer button only if it's the current dentist's appointment and status is appropriate
+      if (transferBtn) {
+        transferBtn.style.display =
+          isCurrentDentistAppointment && isTransferableStatus
+            ? 'inline-block'
+            : 'none'
+      }
 
       // Load existing patient notes if any
       return fetch(
@@ -842,6 +873,347 @@ function updateAppointmentStatus(appointmentId, status) {
   }
 }
 
+// Make appointment available for transfer to other dentists
+function makeAppointmentTransferable(appointmentId) {
+  // Show confirmation dialog
+  showConfirmDialog(
+    'Make this appointment available for transfer to another dentist?<br><br>' +
+      '<div class="info-message"><i class="fas fa-info-circle"></i> ' +
+      'The appointment will be visible to other dentists who can accept it.</div>',
+    () => {
+      // Call API to mark appointment as transferable
+      fetch(
+        `http://localhost:3000/api/appointments/${appointmentId}/transfer`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ transferable: true }),
+        }
+      )
+        .then((response) => {
+          if (!response.ok) {
+            return response
+              .json()
+              .then((data) => {
+                throw new Error(
+                  data.message || 'Failed to mark appointment as transferable'
+                )
+              })
+              .catch(() => {
+                throw new Error(`Server error: ${response.status}`)
+              })
+          }
+          return response.json()
+        })
+        .then((data) => {
+          if (!data.success) {
+            throw new Error(
+              data.message || 'Failed to mark appointment as transferable'
+            )
+          }
+
+          // Show success message
+          showToast(
+            'Appointment is now available for transfer',
+            TOAST_LEVELS.SUCCESS
+          )
+          closeModal()
+
+          // Reload appointments to show updated status
+          const userId = JSON.parse(localStorage.getItem('user')).id
+          loadAppointments(userId)
+
+          // Load transferable appointments too if the tab exists
+          if (document.querySelector('[data-tab="transferable"]')) {
+            loadTransferableAppointments()
+          }
+        })
+        .catch((error) => {
+          console.error('Error marking appointment as transferable:', error)
+          showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+        })
+    }
+  )
+}
+
+// Accept a transferable appointment (assign to current dentist)
+function acceptTransferableAppointment(appointmentId) {
+  const currentUser = JSON.parse(localStorage.getItem('user'))
+
+  // Show confirmation dialog
+  showConfirmDialog(
+    'Accept this appointment and add it to your schedule?<br><br>' +
+      '<div class="info-message"><i class="fas fa-info-circle"></i> ' +
+      'Once accepted, this appointment will be removed from the transferable list.</div>',
+    () => {
+      // Call API to accept transfer
+      fetch(
+        `http://localhost:3000/api/appointments/${appointmentId}/accept-transfer`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            dentistName: currentUser.name,
+            dentistId: currentUser.id,
+          }),
+        }
+      )
+        .then((response) => {
+          if (!response.ok) {
+            return response
+              .json()
+              .then((data) => {
+                throw new Error(
+                  data.message || 'Failed to accept appointment transfer'
+                )
+              })
+              .catch(() => {
+                throw new Error(`Server error: ${response.status}`)
+              })
+          }
+          return response.json()
+        })
+        .then((data) => {
+          if (!data.success) {
+            throw new Error(
+              data.message || 'Failed to accept appointment transfer'
+            )
+          }
+
+          // Show success message
+          showToast(
+            'Appointment successfully transferred to you',
+            TOAST_LEVELS.SUCCESS
+          )
+
+          // Reload appointments
+          loadAppointments(currentUser.id)
+
+          // Reload transferable appointments
+          loadTransferableAppointments()
+        })
+        .catch((error) => {
+          console.error('Error accepting appointment transfer:', error)
+          showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+        })
+    }
+  )
+}
+
+// Load transferable appointments that other dentists have made available
+function loadTransferableAppointments() {
+  const tableBody = document.getElementById('transferable-appointments-data')
+  const noAppointmentsMsg = document.getElementById(
+    'no-transferable-appointments'
+  )
+
+  if (!tableBody) return
+
+  // Show loading message
+  tableBody.innerHTML =
+    '<tr><td colspan="6" style="text-align: center;">Loading transferable appointments...</td></tr>'
+
+  fetch('http://localhost:3000/api/appointments/transferable')
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error('Failed to fetch transferable appointments')
+      }
+      return response.json()
+    })
+    .then((data) => {
+      // Clear loading message
+      tableBody.innerHTML = ''
+
+      if (!data.success) {
+        throw new Error(
+          data.message || 'Failed to load transferable appointments'
+        )
+      }
+
+      const appointments = data.appointments
+      const currentUser = JSON.parse(localStorage.getItem('user'))
+
+      if (appointments.length === 0) {
+        tableBody.style.display = 'none'
+        noAppointmentsMsg.style.display = 'block'
+      } else {
+        tableBody.style.display = 'table-row-group'
+        noAppointmentsMsg.style.display = 'none'
+
+        // Filter out appointments that belong to the current dentist
+        const filteredAppointments = appointments.filter(
+          (apt) => apt.original_dentist !== currentUser.name
+        )
+
+        if (filteredAppointments.length === 0) {
+          tableBody.style.display = 'none'
+          noAppointmentsMsg.style.display = 'block'
+          return
+        }
+
+        // Add appointments to table
+        filteredAppointments.forEach((apt) => {
+          // Format date and time
+          let formattedDate = 'N/A'
+          let formattedTime = 'N/A'
+
+          try {
+            if (apt.date) {
+              const dateObj = new Date(apt.date)
+              if (!isNaN(dateObj.getTime())) {
+                formattedDate = dateObj.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })
+              }
+            }
+
+            if (apt.time) {
+              const [hours, minutes] = apt.time.split(':')
+              if (!isNaN(hours) && !isNaN(minutes)) {
+                const timeObj = new Date()
+                timeObj.setHours(hours, minutes, 0)
+                formattedTime = timeObj.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              }
+            }
+          } catch (err) {
+            console.error('Error formatting date/time:', err)
+          }
+
+          const row = document.createElement('tr')
+          row.dataset.appointmentId = apt.id
+          row.dataset.date = apt.date || ''
+          row.dataset.status = apt.transfer_status || 'available'
+
+          row.innerHTML = `
+            <td>${formattedDate}<br>${formattedTime}</td>
+            <td>${apt.userName || 'Unknown'}</td>
+            <td>${apt.service}</td>
+            <td>${apt.original_dentist || 'N/A'}</td>
+            <td>
+              <span class="appointment-status status-${
+                apt.transfer_status || 'available'
+              }">
+                ${
+                  (apt.transfer_status || 'available').charAt(0).toUpperCase() +
+                  (apt.transfer_status || 'available').slice(1)
+                }
+              </span>
+            </td>
+            <td class="actions-cell">
+              <button class="action-btn btn-view" title="View Details">
+                <i class="fas fa-eye"></i>
+              </button>
+              ${
+                apt.transfer_status === 'available'
+                  ? `
+                <button class="action-btn btn-accept-transfer" title="Accept Transfer">
+                  <i class="fas fa-hand-holding-medical"></i>
+                </button>
+              `
+                  : ''
+              }
+            </td>
+          `
+
+          tableBody.appendChild(row)
+        })
+
+        // Add event listeners to the transferable appointment buttons
+        tableBody.querySelectorAll('.btn-view').forEach((btn) => {
+          btn.addEventListener('click', function () {
+            const row = this.closest('tr')
+            const appointmentId = row.dataset.appointmentId
+            openAppointmentModal(appointmentId, currentUser.id)
+          })
+        })
+
+        tableBody.querySelectorAll('.btn-accept-transfer').forEach((btn) => {
+          btn.addEventListener('click', function () {
+            const row = this.closest('tr')
+            const appointmentId = row.dataset.appointmentId
+            acceptTransferableAppointment(appointmentId)
+          })
+        })
+      }
+    })
+    .catch((error) => {
+      console.error('Error loading transferable appointments:', error)
+      tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #721c24;">
+        Error loading appointments: ${error.message}</td></tr>`
+    })
+}
+
+// Filter transferable appointments based on status and date
+function filterTransferableAppointments() {
+  const statusFilter = document.getElementById(
+    'transferable-status-filter'
+  ).value
+  const dateFilter = document.getElementById('transferable-date-filter').value
+
+  const rows = document.querySelectorAll(
+    '#transferable-appointments-table tbody tr'
+  )
+  let visibleCount = 0
+
+  rows.forEach((row) => {
+    let showRow = true
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      const rowStatus = row.dataset.status
+      if (rowStatus !== statusFilter) {
+        showRow = false
+      }
+    }
+
+    // Filter by date
+    if (dateFilter && showRow) {
+      try {
+        const rowDate = new Date(row.dataset.date)
+        const filterDate = new Date(dateFilter)
+
+        if (
+          rowDate.getFullYear() !== filterDate.getFullYear() ||
+          rowDate.getMonth() !== filterDate.getMonth() ||
+          rowDate.getDate() !== filterDate.getDate()
+        ) {
+          showRow = false
+        }
+      } catch (err) {
+        console.error('Error comparing dates:', err)
+      }
+    }
+
+    // Show or hide row
+    if (showRow) {
+      row.style.display = ''
+      visibleCount++
+    } else {
+      row.style.display = 'none'
+    }
+  })
+
+  // Show or hide "no appointments" message
+  const noAppointmentsMsg = document.getElementById(
+    'no-transferable-appointments'
+  )
+  if (visibleCount === 0) {
+    noAppointmentsMsg.style.display = 'block'
+  } else {
+    noAppointmentsMsg.style.display = 'none'
+  }
+}
+
 // Helper function to process the actual status update
 function processDentistStatusUpdate(appointmentId, status) {
   fetch(`http://localhost:3000/api/appointments/${appointmentId}/status`, {
@@ -914,17 +1286,28 @@ function savePatientNotes(userId, patientId, appointmentId, notes) {
         throw new Error(data.message || 'Failed to save patient notes')
       }
 
-      alert('Patient notes saved successfully')
+      showToast('Patient notes saved successfully', TOAST_LEVELS.SUCCESS)
+
+      // Update the notes display in the modal immediately
+      const notesDisplay = document.getElementById('modal-appointment-notes')
+      const notesContainer = document.getElementById('modal-notes-container')
+      if (notesDisplay) {
+        notesDisplay.textContent = notes
+        // Ensure the container is visible if notes were just added
+        if (notesContainer && notes) {
+          notesContainer.style.display = 'flex' // Or 'block' depending on your CSS
+        }
+      }
     })
     .catch((error) => {
       console.error('Error saving patient notes:', error)
-      alert(`Error: ${error.message}`)
+      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
     })
 }
 
 // Update dentist profile
 function updateDentistProfile(userId, specialization, bio) {
-  return fetch(`http://localhost:3000/api/dentists/${userId}`, {
+  return fetch(`http://localhost:3000/api/users/dentists/${userId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -936,13 +1319,15 @@ function updateDentistProfile(userId, specialization, bio) {
   })
     .then((response) => {
       if (!response.ok) {
+        console.error('Profile update failed with status:', response.status)
         return response
           .json()
+          .catch(() => {
+            // If we can't parse JSON from the error response
+            throw new Error(`Server error: ${response.status}`)
+          })
           .then((data) => {
             throw new Error(data.message || 'Failed to update profile')
-          })
-          .catch(() => {
-            throw new Error(`Server error: ${response.status}`)
           })
       }
       return response.json()
@@ -1120,11 +1505,6 @@ function setupEventListeners(userId) {
           'Are you sure you want to cancel this appointment?',
           () => updateAppointmentStatus(appointmentId, 'cancelled')
         )
-      } else if (target.classList.contains('btn-assign')) {
-        showConfirmDialog(
-          'Are you sure you want to assign this appointment to yourself?',
-          () => assignAppointmentToDentist(appointmentId, userId)
-        )
       }
     })
 
@@ -1170,16 +1550,25 @@ function setupEventListeners(userId) {
   document.getElementById('save-notes').addEventListener('click', function () {
     const modal = document.getElementById('appointment-modal')
     const notes = document.getElementById('patient-notes').value.trim()
+    const currentAppointmentId = modal.dataset.appointmentId // Get appointmentId from modal dataset
 
     if (!notes) {
-      alert('Please enter some notes before saving')
+      showToast('Please enter some notes before saving', TOAST_LEVELS.WARNING)
+      return
+    }
+
+    // Ensure patientId and appointmentId are available
+    const currentPatientId = modal.dataset.patientId
+    if (!currentPatientId || !currentAppointmentId) {
+      showToast('Error: Missing patient or appointment ID.', TOAST_LEVELS.ERROR)
+      console.error('Missing patientId or appointmentId in modal dataset')
       return
     }
 
     savePatientNotes(
       userId,
-      modal.dataset.patientId,
-      modal.dataset.appointmentId,
+      currentPatientId,
+      currentAppointmentId, // Use the correct appointment ID
       notes
     )
   })
@@ -1361,10 +1750,12 @@ function setupEventListeners(userId) {
 
       updateDentistProfile(userId, specialization, bio)
         .then((data) => {
+          console.log('Profile update successful:', data)
           showProfileStatus('Profile updated successfully!', 'success')
         })
         .catch((error) => {
-          showProfileStatus('Error: ' + error.message, 'error')
+          console.error('Profile update error:', error)
+          showProfileStatus('Error updating profile: ' + error.message, 'error')
         })
     })
 
@@ -1386,58 +1777,111 @@ function setupEventListeners(userId) {
     // Reload appointments with the new filter
     loadAppointments(userId, isViewingAll)
   })
-}
 
-// New function to assign an appointment to the current dentist
-function assignAppointmentToDentist(appointmentId, userId) {
-  const currentUser = JSON.parse(localStorage.getItem('user'))
-  if (!currentUser || !currentUser.name) {
-    showToast('Error: User information not available', TOAST_LEVELS.ERROR)
-    return
+  // Add the transfer button to the modal actions
+  const modalActions = document.querySelector('.modal-actions')
+  if (modalActions) {
+    // Create transfer button if it doesn't exist
+    if (!document.getElementById('transfer-appointment')) {
+      const transferBtn = document.createElement('button')
+      transferBtn.id = 'transfer-appointment'
+      transferBtn.className = 'btn btn-warning'
+      transferBtn.innerHTML =
+        '<i class="fas fa-exchange-alt"></i> Make Available for Transfer'
+
+      // Insert before the close button
+      const closeBtn = document.getElementById('close-modal')
+      if (closeBtn) {
+        modalActions.insertBefore(transferBtn, closeBtn)
+      } else {
+        modalActions.appendChild(transferBtn)
+      }
+    }
+
+    // Add event listener to transfer button
+    document
+      .getElementById('transfer-appointment')
+      .addEventListener('click', function () {
+        const appointmentId =
+          document.getElementById('appointment-modal').dataset.appointmentId
+        makeAppointmentTransferable(appointmentId)
+      })
   }
 
-  fetch(`http://localhost:3000/api/appointments/${appointmentId}/assign`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      dentistName: currentUser.name,
-      dentistId: userId,
-    }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return response
-          .json()
-          .then((data) => {
-            throw new Error(data.message || 'Failed to assign appointment')
-          })
-          .catch(() => {
-            throw new Error(`Server error: ${response.status}`)
-          })
-      }
-      return response.json()
-    })
-    .then((data) => {
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to assign appointment')
-      }
+  // Add tab for transferable appointments if it doesn't exist
+  const tabsContainer = document.querySelector('.dentist-tabs')
+  // Ensure the tab content container exists before proceeding
+  const tabContent = document.querySelector('.tab-content')
 
-      showToast(
-        `Appointment assigned to you successfully!`,
-        TOAST_LEVELS.SUCCESS
-      )
+  if (
+    tabsContainer &&
+    tabContent &&
+    !document.querySelector('[data-tab="transferable"]')
+  ) {
+    const transferableTab = document.createElement('button')
+    transferableTab.className = 'tab-btn'
+    transferableTab.setAttribute('data-tab', 'transferable')
+    transferableTab.innerHTML =
+      '<i class="fas fa-exchange-alt"></i> Transferable'
+    tabsContainer.appendChild(transferableTab)
 
-      // Reload with current view mode
-      const viewToggleBtn = document.getElementById('view-toggle')
-      const isViewingAll = viewToggleBtn.classList.contains('viewing-all')
-      loadAppointments(userId, isViewingAll)
-    })
-    .catch((error) => {
-      console.error('Error assigning appointment:', error)
-      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
-    })
+    // Also add the tab content pane *inside* the tabContent container
+    const transferablePane = document.createElement('div')
+    transferablePane.className = 'tab-pane' // Start inactive
+    transferablePane.id = 'transferable-tab'
+
+    transferablePane.innerHTML = `
+        <div class="tab-header">
+          <h2>Transferable Appointments</h2>
+          <div class="filters">
+            <select id="transferable-status-filter">
+              <option value="all">All Status</option>
+              <option value="available">Available</option>
+            </select>
+            <input type="date" id="transferable-date-filter" placeholder="Filter by date" />
+            <button id="clear-transferable-filters" class="btn btn-sm">Clear</button>
+          </div>
+        </div>
+        <div class="appointments-list">
+          <table id="transferable-appointments-table">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Patient</th>
+                <th>Service</th>
+                <th>Original Dentist</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="transferable-appointments-data">
+              <!-- Transferable appointments will be loaded dynamically -->
+            </tbody>
+          </table>
+          <div id="no-transferable-appointments" class="no-data-message">
+            No transferable appointments found.
+          </div>
+        </div>
+      `
+
+    // Append the new pane to the main tab content area
+    tabContent.appendChild(transferablePane)
+
+    // Add event listeners for filters (ensure elements exist before adding listeners)
+    document
+      .getElementById('transferable-status-filter')
+      ?.addEventListener('change', filterTransferableAppointments)
+    document
+      .getElementById('transferable-date-filter')
+      ?.addEventListener('input', filterTransferableAppointments)
+    document
+      .getElementById('clear-transferable-filters')
+      ?.addEventListener('click', function () {
+        document.getElementById('transferable-status-filter').value = 'all'
+        document.getElementById('transferable-date-filter').value = ''
+        filterTransferableAppointments()
+      })
+  }
 }
 
 // Dentist auth check function

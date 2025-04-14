@@ -7,6 +7,7 @@ import {
   getAllUsers,
   updateUserRole,
   updateDentistProfile,
+  getDentistProfile,
 } from './userController.js'
 import { protect, admin } from '../middleware/authMiddleware.js'
 
@@ -29,8 +30,8 @@ router.put('/profile/:id', protect, updateUserProfile)
 router.get('/', protect, admin, getAllUsers)
 router.put('/:id/role', protect, admin, updateUserRole)
 
-// Dentist profile update route
-// If you have a separate dentist route file, this might be there instead.
+// Dentist profile routes
+router.get('/dentists/:id', protect, getDentistProfile)
 router.put('/dentists/:id', protect, updateDentistProfile)
 
 export default router

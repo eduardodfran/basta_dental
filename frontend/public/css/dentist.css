@@ -518,6 +518,16 @@
   color: white;
 }
 
+/* Add btn-warning style */
+.btn-warning {
+  background-color: #ffc107; /* Standard warning color */
+  color: #212529; /* Dark text for better contrast on yellow */
+}
+.btn-warning:hover {
+  background-color: #e0a800;
+  color: #212529;
+}
+
 .btn-info {
   background-color: #17a2b8;
   color: white;
@@ -557,6 +567,29 @@
   color: #dc3545;
 }
 
+/* Style for accept transfer button icon */
+.btn-accept-transfer {
+  color: #ffc107; /* Use warning color */
+}
+.btn-accept-transfer:hover {
+  color: #e0a800; /* Darker warning color on hover */
+}
+
+/* Transfer Tab */
+
+#transferable-appointments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+#transferable-appointments-table th,
+#transferable-appointments-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e1e4e8;
+  text-align: left;
+}
+
 /* View toggle button */
 #view-toggle {
   margin-left: 10px;
@@ -590,16 +623,6 @@
   border-radius: 12px;
   margin-left: 5px;
   vertical-align: middle;
-}
-
-/* Assign button specific style */
-.btn-assign {
-  background-color: #28a745;
-  color: white;
-}
-
-.btn-assign:hover {
-  background-color: #218838;
 }
 
 /* Responsive design */

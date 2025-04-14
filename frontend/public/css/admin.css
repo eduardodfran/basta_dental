@@ -433,6 +433,79 @@
   cursor: not-allowed;
 }
 
+/* Transfer Tab */
+#transferable-appointments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+#transferable-appointments-table th,
+#transferable-appointments-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e1e4e8;
+  text-align: left;
+}
+
+#transferable-appointments-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #444;
+}
+
+/* Transferable appointments specific styles */
+#transferable-appointments-tab .appointment-status.status-available {
+  background-color: #17a2b8;
+  color: #fff;
+}
+
+#transferable-appointments-tab .appointment-status.status-accepted {
+  background-color: #28a745;
+  color: #fff;
+}
+
+#transferable-appointments-tab .appointment-status.status-completed {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+.btn-assign-transfer {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-assign-transfer:hover {
+  background-color: #138496;
+}
+
+#assign-dentist-modal .modal-content {
+  max-width: 500px;
+}
+
+#assign-dentist-modal .form-group {
+  margin-top: 15px;
+}
+
+#assign-dentist-modal label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+#assign-dentist-modal select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+#assign-dentist-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 0 0 0;
+  gap: 10px;
+}
+
 /* Form Styles */
 .form-group {
   margin-bottom: 1.5rem;
@@ -611,6 +684,37 @@
   padding: 1rem;
   border-radius: 4px;
   margin-top: 1rem;
+}
+
+/* Database setup instructions styles */
+.db-setup-instructions {
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.db-setup-instructions h3 {
+  margin-top: 0;
+  color: #495057;
+}
+
+.db-setup-instructions pre {
+  background-color: #212529;
+  color: #20c997;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 14px;
+  overflow-x: auto;
+  margin: 15px 0;
+  text-align: left;
+}
+
+.db-setup-instructions button {
+  margin-top: 15px;
 }
 
 /* Responsive design */

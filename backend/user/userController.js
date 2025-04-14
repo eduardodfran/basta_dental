@@ -293,6 +293,11 @@ export const updateDentistProfile = async (req, res) => {
     const userId = req.params.id
     const { specialization, bio } = req.body
 
+    console.log(`Received request to update profile for user ${userId}:`, {
+      specialization,
+      bio,
+    })
+
     // Check if user is a dentist
     const user = await User.findById(userId)
     if (!user || user.role !== 'dentist') {
@@ -317,6 +322,9 @@ export const updateDentistProfile = async (req, res) => {
       bio,
     })
 
+    // Log success
+    console.log('Profile updated successfully:', updatedDentist)
+
     res.json({
       success: true,
       message: 'Dentist profile updated successfully',
@@ -327,6 +335,9 @@ export const updateDentistProfile = async (req, res) => {
     })
   } catch (error) {
     console.error('Update dentist profile error:', error)
-    res.status(500).json({ success: false, message: 'Server error' })
+    res.status(500).json({
+      success: false,
+      message: 'Server error updating dentist profile: ' + error.message,
+    })
   }
 }

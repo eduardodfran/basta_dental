@@ -5,10 +5,17 @@
   box-sizing: border-box;
 }
 
+html {
+  height: 100%; /* Ensure html takes full height */
+}
+
 body {
   font-family: 'Arial', sans-serif;
   line-height: 1.6;
   color: #333;
+  display: flex; /* Use flexbox for layout */
+  flex-direction: column; /* Stack elements vertically */
+  min-height: 100vh; /* Minimum height of the viewport */
 }
 
 .container {
@@ -20,6 +27,7 @@ body {
 
 section {
   padding: 80px 0;
+  flex: 1 0 auto; /* Allow section to grow and shrink, taking available space */
 }
 
 .section-title {
@@ -335,6 +343,7 @@ footer {
   color: white;
   text-align: center;
   padding: 20px 0;
+  flex-shrink: 0; /* Prevent footer from shrinking */
 }
 
 /* Responsive Design */

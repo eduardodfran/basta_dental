@@ -14,6 +14,47 @@ document.addEventListener('DOMContentLoaded', function () {
   loadAnalytics()
   loadClinicAvailability() // Load clinic availability settings
   setupEventListeners()
+
+  // Add transferable appointments tab functionality
+  const transferableTab = document.querySelector(
+    '.tab-btn[data-tab="transferable-appointments"]'
+  )
+  if (transferableTab) {
+    transferableTab.addEventListener('click', () => {
+      loadTransferableAppointments()
+    })
+  }
+
+  // Add event listener to filter button for transferable appointments
+  const transferFilterBtn = document.getElementById('clear-transfer-filters')
+  if (transferFilterBtn) {
+    transferFilterBtn.addEventListener('click', () => {
+      // Reset transfer filters
+      if (document.getElementById('transfer-status-filter'))
+        document.getElementById('transfer-status-filter').value = 'all'
+      if (document.getElementById('transfer-date-filter'))
+        document.getElementById('transfer-date-filter').value = ''
+      filterTransferableAppointments()
+    })
+  }
+
+  // Add event listeners to filter inputs for transferable appointments
+  const transferStatusFilter = document.getElementById('transfer-status-filter')
+  const transferDateFilter = document.getElementById('transfer-date-filter')
+
+  if (transferStatusFilter) {
+    transferStatusFilter.addEventListener(
+      'change',
+      filterTransferableAppointments
+    )
+  }
+
+  if (transferDateFilter) {
+    transferDateFilter.addEventListener(
+      'input', // Using 'input' for better responsiveness
+      filterTransferableAppointments
+    )
+  }
 })
 
 // Mobile navbar toggle
@@ -48,6 +89,305 @@ function initTabs() {
       }
     })
   })
+}
+
+// Load all users
+function loadUsers() {
+  const tableBody = document.getElementById('users-data')
+  const noUsersMsg = document.getElementById('no-users')
+
+  if (!tableBody || !noUsersMsg) {
+    console.error('User table elements not found')
+    return
+  }
+
+  // Show loading indicator
+  tableBody.innerHTML =
+    '<tr><td colspan="7" style="text-align: center;">Loading users...</td></tr>'
+  noUsersMsg.style.display = 'none'
+
+  fetch('http://localhost:3000/api/users')
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch users: ${response.status}`)
+      }
+      return response.json()
+    })
+    .then((data) => {
+      tableBody.innerHTML = '' // Clear loading/previous data
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to load users')
+      }
+
+      const users = data.users
+
+      if (users.length === 0) {
+        tableBody.style.display = 'none'
+        noUsersMsg.style.display = 'block'
+      } else {
+        tableBody.style.display = 'table-row-group'
+        noUsersMsg.style.display = 'none'
+
+        users.forEach((user) => {
+          const row = document.createElement('tr')
+          row.dataset.userId = user.id
+          row.dataset.userName = user.name
+          row.dataset.userEmail = user.email
+          row.dataset.userRole = user.role
+
+          // Format joined date
+          let joinedDate = 'N/A'
+          try {
+            if (user.created_at) {
+              joinedDate = new Date(user.created_at).toLocaleDateString(
+                'en-US',
+                {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                }
+              )
+            }
+          } catch (e) {
+            console.error('Error formatting date:', e)
+          }
+
+          row.innerHTML = `
+            <td>${user.id}</td>
+            <td>${user.name}</td>
+            <td>${user.email}</td>
+            <td>${user.phone || 'N/A'}</td>
+            <td><span class="role-tag role-${user.role}">${
+            user.role.charAt(0).toUpperCase() + user.role.slice(1)
+          }</span></td>
+            <td>${joinedDate}</td>
+            <td class="actions-cell">
+              <button class="action-btn btn-view-user" title="View Details">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="action-btn btn-change-role" title="Change Role">
+                <i class="fas fa-user-edit"></i>
+              </button>
+            </td>
+          `
+          tableBody.appendChild(row)
+        })
+        // Apply filters after loading
+        filterUsers()
+      }
+    })
+    .catch((error) => {
+      console.error('Error loading users:', error)
+      tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #721c24;">
+        Error loading users: ${error.message}</td></tr>`
+      tableBody.style.display = 'table-row-group'
+      noUsersMsg.style.display = 'none'
+    })
+}
+
+// Filter users based on search and role
+function filterUsers() {
+  const searchTerm = document.getElementById('search-users').value.toLowerCase()
+  const roleFilter = document.getElementById('role-filter').value
+  const tableBody = document.getElementById('users-data')
+  const rows = tableBody.querySelectorAll('tr')
+  const noUsersMsg = document.getElementById('no-users')
+  let visibleCount = 0
+
+  rows.forEach((row) => {
+    const name = (row.dataset.userName || '').toLowerCase()
+    const email = (row.dataset.userEmail || '').toLowerCase()
+    const role = row.dataset.userRole || ''
+
+    const matchesSearch =
+      name.includes(searchTerm) || email.includes(searchTerm)
+    const matchesRole = roleFilter === 'all' || role === roleFilter
+
+    if (matchesSearch && matchesRole) {
+      row.style.display = ''
+      visibleCount++
+    } else {
+      row.style.display = 'none'
+    }
+  })
+
+  noUsersMsg.style.display = visibleCount === 0 ? 'block' : 'none'
+}
+
+// Open user details modal
+function openUserDetailsModal(userId) {
+  const modal = document.getElementById('user-modal')
+  const detailsContainer = document.getElementById('user-details')
+  const appointmentsList = document.getElementById('user-appointments-list')
+  const changeRoleBtn = document.getElementById('edit-user-role')
+
+  if (!modal || !detailsContainer || !appointmentsList || !changeRoleBtn) {
+    console.error('User details modal elements not found')
+    showToast('Could not open user details.', TOAST_LEVELS.ERROR)
+    return
+  }
+
+  detailsContainer.innerHTML = '<p>Loading user details...</p>'
+  appointmentsList.innerHTML = '<p>Loading appointments...</p>'
+  modal.style.display = 'block'
+  modal.dataset.userId = userId // Store userId for the change role button
+
+  // Fetch User Details
+  fetch(`http://localhost:3000/api/users/profile/${userId}`)
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        const user = data.user
+        modal.dataset.userRole = user.role // Store role for change role modal
+        detailsContainer.innerHTML = `
+          <p><strong>ID:</strong> ${user.id}</p>
+          <p><strong>Name:</strong> ${user.name}</p>
+          <p><strong>Email:</strong> ${user.email}</p>
+          <p><strong>Phone:</strong> ${user.phone || 'N/A'}</p>
+          <p><strong>Date of Birth:</strong> ${
+            user.dob ? new Date(user.dob).toLocaleDateString() : 'N/A'
+          }</p>
+          <p><strong>Gender:</strong> ${user.gender || 'N/A'}</p>
+          <p><strong>Address:</strong> ${user.address || 'N/A'}</p>
+          <p><strong>Role:</strong> <span class="role-tag role-${user.role}">${
+          user.role.charAt(0).toUpperCase() + user.role.slice(1)
+        }</span></p>
+          <p><strong>Joined:</strong> ${new Date(
+            user.created_at
+          ).toLocaleDateString()}</p>
+        `
+      } else {
+        throw new Error(data.message || 'Failed to load user details')
+      }
+    })
+    .catch((error) => {
+      detailsContainer.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`
+    })
+
+  // Fetch User Appointments
+  fetch(`http://localhost:3000/api/appointments/user/${userId}`)
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        const appointments = data.appointments
+        if (appointments.length === 0) {
+          appointmentsList.innerHTML =
+            '<p>No appointments found for this user.</p>'
+        } else {
+          appointmentsList.innerHTML = `
+            <ul>
+              ${appointments
+                .map(
+                  (apt) => `
+                <li>
+                  ${new Date(apt.date).toLocaleDateString()} ${apt.time} - ${
+                    apt.service
+                  } (${apt.status})
+                  ${apt.dentist ? `with ${apt.dentist}` : ''}
+                </li>
+              `
+                )
+                .join('')}
+            </ul>
+          `
+        }
+      } else {
+        throw new Error(data.message || 'Failed to load appointments')
+      }
+    })
+    .catch((error) => {
+      appointmentsList.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`
+    })
+}
+
+// Open change role modal
+function openChangeRoleModal(userId, currentRole) {
+  const modal = document.getElementById('role-modal')
+  const form = document.getElementById('change-role-form')
+  const userIdInput = document.getElementById('user-id')
+  const roleSelect = document.getElementById('user-role') // Corrected ID
+
+  if (!modal || !form || !userIdInput || !roleSelect) {
+    console.error('Change role modal elements not found')
+    showToast('Could not open role change form.', TOAST_LEVELS.ERROR)
+    return
+  }
+
+  userIdInput.value = userId
+  roleSelect.value = currentRole
+  modal.style.display = 'block'
+}
+
+// Update user role via API
+function updateUserRole(event) {
+  event.preventDefault()
+  const form = event.target
+  const userId = document.getElementById('user-id').value
+  const newRole = document.getElementById('user-role').value // Corrected ID
+  const modal = document.getElementById('role-modal')
+
+  if (!userId || !newRole) {
+    showToast('User ID or role missing.', TOAST_LEVELS.ERROR)
+    return
+  }
+
+  fetch(`http://localhost:3000/api/users/${userId}/role`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ role: newRole }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then((err) => {
+          throw new Error(
+            err.message || `HTTP error! status: ${response.status}`
+          )
+        })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (data.success) {
+        showToast('User role updated successfully!', TOAST_LEVELS.SUCCESS)
+        modal.style.display = 'none'
+        loadUsers() // Reload the users table
+        // If the user details modal is open for this user, update its role display
+        const userModal = document.getElementById('user-modal')
+        if (
+          userModal.style.display === 'block' &&
+          userModal.dataset.userId === userId
+        ) {
+          const roleSpan = userModal.querySelector('.role-tag')
+          if (roleSpan) {
+            roleSpan.className = `role-tag role-${newRole}`
+            roleSpan.textContent =
+              newRole.charAt(0).toUpperCase() + newRole.slice(1)
+          }
+          userModal.dataset.userRole = newRole // Update stored role
+        }
+      } else {
+        throw new Error(data.message || 'Failed to update role')
+      }
+    })
+    .catch((error) => {
+      console.error('Error updating user role:', error)
+      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+    })
+}
+
+// Load clinic availability settings
+function loadClinicAvailability() {
+  console.log('loadClinicAvailability function called - needs implementation')
+  // Placeholder: Add logic to fetch and display clinic availability
+}
+
+// Load analytics data
+function loadAnalytics() {
+  console.log('loadAnalytics function called - needs implementation')
+  // Placeholder: Add logic to fetch and display analytics data
 }
 
 // Load all appointments
@@ -150,7 +490,7 @@ function loadAppointments() {
               ${
                 apt.status === 'pending'
                   ? `
-                <button class="action-btn btn-edit btn-confirm" title="Confirm Appointment">
+                <button class="action-btn btn-confirm" title="Confirm Appointment">
                   <i class="fas fa-check"></i>
                 </button>
               `
@@ -159,7 +499,7 @@ function loadAppointments() {
               ${
                 apt.status === 'confirmed'
                   ? `
-                <button class="action-btn btn-edit btn-complete" title="Mark as Completed">
+                <button class="action-btn btn-complete" title="Mark as Completed">
                   <i class="fas fa-check-double"></i>
                 </button>
               `
@@ -168,9 +508,17 @@ function loadAppointments() {
               ${
                 apt.status !== 'cancelled' && apt.status !== 'completed'
                   ? `
-                <button class="action-btn btn-delete btn-cancel" title="Cancel Appointment">
+                <button class="action-btn btn-cancel" title="Cancel Appointment">
                   <i class="fas fa-times"></i>
                 </button>
+                <button class="action-btn btn-assign" title="Reassign Dentist">
+                  <i class="fas fa-user-md"></i>
+                </button>
+                ${
+                  apt.transfer_status === 'available'
+                    ? `<span class="transfer-badge" title="Available for transfer"><i class="fas fa-exchange-alt"></i></span>`
+                    : ''
+                }
               `
                   : ''
               }
@@ -187,1041 +535,146 @@ function loadAppointments() {
     })
 }
 
-// Load all users
-function loadUsers() {
-  const tableBody = document.getElementById('users-data')
-  const noUsersMsg = document.getElementById('no-users')
+// Load transferable appointments
+function loadTransferableAppointments() {
+  const tableBody = document.getElementById('transferable-appointments-data')
+  const noDataMsg = document.getElementById('no-transferable-appointments')
 
-  // Show loading indicator
+  if (!tableBody) {
+    console.error('Transferable appointments table body not found in DOM')
+    return
+  }
+
+  // Show loading message - Ensure colspan is 6
   tableBody.innerHTML =
-    '<tr><td colspan="7" style="text-align: center;">Loading users...</td></tr>'
+    '<tr><td colspan="6" style="text-align: center;">Loading transferable appointments...</td></tr>'
 
-  // Fetch users from API
-  fetch('http://localhost:3000/api/users')
+  fetch('http://localhost:3000/api/appointments/transferable')
     .then((response) => {
       if (!response.ok) {
-        throw new Error('Failed to fetch users')
-      }
-      return response.json()
-    })
-    .then((data) => {
-      // Clear previous data
-      tableBody.innerHTML = ''
-
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to load users')
-      }
-
-      const users = data.users
-
-      if (users.length === 0) {
-        tableBody.style.display = 'none'
-        noUsersMsg.style.display = 'block'
-      } else {
-        tableBody.style.display = 'table-row-group'
-        noUsersMsg.style.display = 'none'
-
-        // Add users to table
-        users.forEach((user) => {
-          // Format date
-          const joinDate = new Date(user.created_at)
-          const formattedDate = joinDate.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })
-
-          const row = document.createElement('tr')
-          row.dataset.userId = user.id
-          row.innerHTML = `
-            <td>${user.id}</td>
-            <td>${user.name}</td>
-            <td>${user.email}</td>
-            <td>${user.phone || 'N/A'}</td>
-            <td><span class="user-role role-${user.role}">${
-            user.role
-          }</span></td>
-            <td>${formattedDate}</td>
-            <td class="actions-cell">
-              <button class="action-btn btn-view" title="View User Details">
-                <i class="fas fa-eye"></i>
-              </button>
-              <button class="action-btn btn-edit" title="Edit User Role">
-                <i class="fas fa-user-edit"></i>
-              </button>
-            </td>
-          `
-          tableBody.appendChild(row)
-        })
-      }
-    })
-    .catch((error) => {
-      console.error('Error loading users:', error)
-      tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #721c24;">
-        Error loading users: ${error.message}</td></tr>`
-    })
-}
-
-// Load analytics data
-function loadAnalytics() {
-  // Set default date range (last 30 days)
-  const endDate = new Date()
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - 30)
-
-  document.getElementById('analytics-start-date').value =
-    formatDateForInput(startDate)
-  document.getElementById('analytics-end-date').value =
-    formatDateForInput(endDate)
-
-  fetchAnalyticsData(formatDateForInput(startDate), formatDateForInput(endDate))
-}
-
-// Fetch analytics data from API
-function fetchAnalyticsData(startDate, endDate) {
-  // Update analytics cards with loading state
-  document.getElementById('total-appointments').textContent = 'Loading...'
-  document.getElementById('new-users').textContent = 'Loading...'
-  document.getElementById('completion-rate').textContent = 'Loading...'
-  document.getElementById('cancellation-rate').textContent = 'Loading...'
-
-  // Fetch analytics data from API
-  fetch(
-    `http://localhost:3000/api/analytics?startDate=${startDate}&endDate=${endDate}`
-  )
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch analytics data')
-      }
-      return response.json()
-    })
-    .then((data) => {
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to load analytics')
-      }
-
-      // Update analytics cards
-      document.getElementById('total-appointments').textContent =
-        data.totalAppointments || 0
-      document.getElementById('new-users').textContent = data.newUsers || 0
-      document.getElementById('completion-rate').textContent = `${
-        data.completionRate || 0
-      }%`
-      document.getElementById('cancellation-rate').textContent = `${
-        data.cancellationRate || 0
-      }%`
-
-      // In a real implementation, you would update charts here
-      // For now, we'll just show placeholder data
-      console.log('Analytics data loaded:', data)
-    })
-    .catch((error) => {
-      console.error('Error loading analytics:', error)
-      document.getElementById('total-appointments').textContent = 'Error'
-      document.getElementById('new-users').textContent = 'Error'
-      document.getElementById('completion-rate').textContent = 'Error'
-      document.getElementById('cancellation-rate').textContent = 'Error'
-    })
-}
-
-// Helper function to format date for input fields
-function formatDateForInput(date) {
-  if (!date) return ''
-
-  const yyyy = date.getFullYear()
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
-
-// --- Clinic Availability Functions ---
-
-// Load clinic permanent and temporary unavailability
-function loadClinicAvailability() {
-  loadClinicPermanentUnavailableDays()
-  loadClinicTemporaryUnavailableDays()
-}
-
-// Load clinic permanently unavailable days
-function loadClinicPermanentUnavailableDays() {
-  const listContainer = document.getElementById(
-    'clinic-permanent-unavailability-list'
-  )
-  const formCheckboxes = document.querySelectorAll(
-    'input[name="clinic-permanent-unavailable"]'
-  )
-  listContainer.innerHTML = '<p>Loading permanent closures...</p>'
-
-  // Reset checkboxes in the form first
-  formCheckboxes.forEach((cb) => (cb.checked = false))
-
-  // Replace with your actual API endpoint
-  fetch(`http://localhost:3000/api/clinic/unavailability/permanent`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch permanent clinic closures')
-      }
-      return response.json()
-    })
-    .then((data) => {
-      listContainer.innerHTML = '' // Clear loading message
-
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to load permanent closures')
-      }
-
-      const unavailableDays = data.permanentUnavailability || []
-
-      if (unavailableDays.length === 0) {
-        listContainer.innerHTML =
-          '<div class="no-data-message">No permanent clinic closures set.</div>'
-        return
-      }
-
-      const dayNames = [
-        'Sunday',
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-      ]
-
-      unavailableDays.forEach((day) => {
-        // Check the corresponding checkbox in the form
-        const checkbox = document.querySelector(
-          `input[name="clinic-permanent-unavailable"][value="${day.dayOfWeek}"]`
+        throw new Error(
+          `Failed to fetch transferable appointments: ${response.status}`
         )
-        if (checkbox) {
-          checkbox.checked = true
-        }
-
-        // Add item to the display list
-        const dayItem = document.createElement('div')
-        dayItem.className = 'unavailability-item'
-        dayItem.dataset.dayId = day.id // Add data attribute for deletion
-        dayItem.innerHTML = `
-          <div class="permanent-day">${dayNames[day.dayOfWeek]}</div>
-          <div class="actions">
-            <button class="delete-clinic-permanent-unavailability" title="Remove permanent closure day">
-              <i class="fas fa-trash-alt"></i>
-            </button>
-          </div>
-        `
-        listContainer.appendChild(dayItem)
-      })
-    })
-    .catch((error) => {
-      console.error('Error loading permanent clinic closures:', error)
-      listContainer.innerHTML = `<div class="error-message">Error: ${error.message}</div>`
-    })
-}
-
-// Load clinic temporarily unavailable days
-function loadClinicTemporaryUnavailableDays() {
-  const listContainer = document.getElementById(
-    'clinic-temporary-unavailability-list'
-  )
-  const noUnavailabilityMsg = document.getElementById(
-    'clinic-no-temporary-unavailability'
-  )
-  listContainer.innerHTML = '<p>Loading temporary closures...</p>'
-  noUnavailabilityMsg.style.display = 'none'
-
-  // Replace with your actual API endpoint
-  fetch(`http://localhost:3000/api/clinic/unavailability/temporary`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch temporary clinic closures')
       }
       return response.json()
     })
     .then((data) => {
-      listContainer.innerHTML = '' // Clear loading message
+      tableBody.innerHTML = '' // Clear loading message
 
       if (!data.success) {
-        throw new Error(data.message || 'Failed to load temporary closures')
-      }
-
-      const tempUnavailableDates = data.temporaryUnavailability || []
-
-      if (tempUnavailableDates.length === 0) {
-        listContainer.style.display = 'none'
-        noUnavailabilityMsg.style.display = 'block'
-        return
-      }
-
-      listContainer.style.display = 'block'
-      noUnavailabilityMsg.style.display = 'none'
-
-      // Sort by start date
-      tempUnavailableDates.sort(
-        (a, b) => new Date(a.start_date) - new Date(b.start_date)
-      )
-
-      tempUnavailableDates.forEach((item) => {
-        // Format dates using Philippine timezone
-        const startDateObj = new Date(`${item.start_date}T00:00:00+08:00`)
-        const formattedStartDate = startDateObj.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          timeZone: 'Asia/Manila',
-        })
-
-        let dateRangeText = formattedStartDate
-
-        // Handle single-day vs range
-        if (item.end_date && item.end_date !== item.start_date) {
-          const endDateObj = new Date(`${item.end_date}T00:00:00+08:00`)
-          const formattedEndDate = endDateObj.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            timeZone: 'Asia/Manila',
-          })
-          dateRangeText += ` to ${formattedEndDate}`
-        }
-
-        const tempItem = document.createElement('div')
-        tempItem.className = 'unavailability-item'
-        tempItem.dataset.unavailabilityId = item.id
-        tempItem.innerHTML = `
-          <div>
-            <div class="date-range">${dateRangeText}</div>
-            ${item.reason ? `<div class="reason">${item.reason}</div>` : ''}
-          </div>
-          <div class="actions">
-            <button class="delete-clinic-temporary-unavailability" title="Remove temporary closure period">
-              <i class="fas fa-trash-alt"></i>
-            </button>
-          </div>
-        `
-        listContainer.appendChild(tempItem)
-      })
-    })
-    .catch((error) => {
-      console.error('Error loading temporary clinic closures:', error)
-      listContainer.innerHTML = `<div class="error-message">Error: ${error.message}</div>`
-      noUnavailabilityMsg.style.display = 'none'
-    })
-}
-
-// Save clinic permanent unavailable days (sends the complete list of checked days)
-function saveClinicPermanentUnavailability(daysOfWeek) {
-  // Replace with your actual API endpoint
-  return fetch(`http://localhost:3000/api/clinic/unavailability/permanent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ daysOfWeek }),
-  }).then((response) => {
-    if (!response.ok) {
-      return response
-        .json()
-        .then((data) => {
-          throw new Error(
-            data.message || 'Failed to save permanent clinic closures'
-          )
-        })
-        .catch(() => {
-          throw new Error(`Server error: ${response.status}`)
-        })
-    }
-    return response.json()
-  })
-}
-
-// Save clinic temporary unavailable days
-function saveClinicTemporaryUnavailability(startDate, endDate, reason) {
-  // Replace with your actual API endpoint
-  return fetch(`http://localhost:3000/api/clinic/unavailability/temporary`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ startDate, endDate, reason }),
-  }).then((response) => {
-    if (!response.ok) {
-      return response
-        .json()
-        .then((data) => {
-          throw new Error(
-            data.message || 'Failed to save temporary clinic closure'
-          )
-        })
-        .catch(() => {
-          throw new Error(`Server error: ${response.status}`)
-        })
-    }
-    return response.json()
-  })
-}
-
-// Delete clinic temporary unavailability
-function deleteClinicTemporaryUnavailability(unavailabilityId) {
-  // Replace with your actual API endpoint
-  return fetch(
-    `http://localhost:3000/api/clinic/unavailability/temporary/${unavailabilityId}`,
-    {
-      method: 'DELETE',
-    }
-  ).then((response) => {
-    if (!response.ok) {
-      return response
-        .json()
-        .then((data) => {
-          throw new Error(
-            data.message || 'Failed to delete temporary clinic closure'
-          )
-        })
-        .catch(() => {
-          throw new Error(`Server error: ${response.status}`)
-        })
-    }
-    return response.json()
-  })
-}
-
-// Delete clinic permanent unavailability
-function deleteClinicPermanentUnavailability(dayId) {
-  // API endpoint to delete permanent clinic closure
-  return fetch(
-    `http://localhost:3000/api/clinic/unavailability/permanent/${dayId}`,
-    {
-      method: 'DELETE',
-    }
-  ).then((response) => {
-    if (!response.ok) {
-      return response
-        .json()
-        .then((data) => {
-          throw new Error(
-            data.message || 'Failed to delete permanent clinic closure'
-          )
-        })
-        .catch(() => {
-          throw new Error(`Server error: ${response.status}`)
-        })
-    }
-    return response.json()
-  })
-}
-
-// Show status message for clinic permanent unavailability
-function showClinicPermanentUnavailabilityStatus(message, type) {
-  const statusElement = document.getElementById(
-    'clinic-permanent-unavailability-status'
-  )
-  statusElement.textContent = message
-  statusElement.className = `form-status ${type}` // type can be 'success', 'error', 'info'
-  statusElement.style.display = 'block'
-
-  // Auto-hide after a few seconds
-  setTimeout(() => {
-    statusElement.style.display = 'none'
-  }, 4000)
-}
-
-// Show status message for clinic temporary unavailability
-function showClinicTemporaryUnavailabilityStatus(message, type) {
-  const statusElement = document.getElementById(
-    'clinic-temporary-unavailability-status'
-  )
-  statusElement.textContent = message
-  statusElement.className = `form-status ${type}` // type can be 'success', 'error', 'info'
-  statusElement.style.display = 'block'
-
-  // Auto-hide after a few seconds
-  setTimeout(() => {
-    statusElement.style.display = 'none'
-  }, 4000)
-}
-
-// --- End Clinic Availability Functions ---
-
-// Open appointment details modal
-function openAppointmentModal(appointmentId) {
-  const modal = document.getElementById('appointment-modal')
-  const detailsContainer = document.getElementById('appointment-details')
-
-  // Show loading
-  detailsContainer.innerHTML = '<p>Loading appointment details...</p>'
-
-  // Show the modal
-  modal.style.display = 'block'
-
-  // Fetch appointment details
-  fetch(`http://localhost:3000/api/appointments/${appointmentId}`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch appointment details')
-      }
-      return response.json()
-    })
-    .then((data) => {
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to load appointment details')
-      }
-
-      const apt = data.appointment
-
-      // Format date for display - using Philippine timezone
-      let formattedDate = 'Invalid date'
-
-      try {
-        // Ensure we have a valid date string with Philippines timezone
-        if (apt.date) {
-          // Add time component with explicit Philippine timezone if not present
-          const dateStr = apt.date.includes('T')
-            ? apt.date
-            : `${apt.date}T00:00:00+08:00`
-
-          const dateObj = new Date(dateStr)
-
-          // Check if date is valid before formatting
-          if (!isNaN(dateObj.getTime())) {
-            formattedDate = dateObj.toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
-            })
-          }
-        }
-      } catch (err) {
-        console.error('Error formatting appointment date:', err)
-        formattedDate = apt.date || 'Unknown date'
-      }
-
-      // Format time if available
-      let formattedTime = 'N/A'
-      if (apt.time) {
-        try {
-          const [hours, minutes] = apt.time.split(':')
-          const timeObj = new Date()
-          timeObj.setHours(hours, minutes, 0)
-          formattedTime = timeObj.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        } catch (err) {
-          console.error('Error formatting appointment time:', err)
-          formattedTime = apt.time || 'N/A'
-        }
-      }
-
-      // Populate details
-      detailsContainer.innerHTML = `
-        <div class="detail-item">
-          <div class="detail-label">Appointment ID:</div>
-          <div class="detail-value">${apt.id}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Patient:</div>
-          <div class="detail-value">${
-            apt.userName || apt.user_id || 'Unknown'
-          }</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">User ID:</div>
-          <div class="detail-value">${apt.user_id}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Service:</div>
-          <div class="detail-value">${apt.service}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Date:</div>
-          <div class="detail-value">${formattedDate}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Time:</div>
-          <div class="detail-value">${formattedTime}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Dentist:</div>
-          <div class="detail-value">${apt.dentist}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Status:</div>
-          <div class="detail-value">
-            <span class="appointment-status status-${apt.status}">
-              ${apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
-            </span>
-          </div>
-        </div>
-        ${
-          apt.notes
-            ? `
-        <div class="detail-item">
-          <div class="detail-label">Notes:</div>
-          <div class="detail-value">${apt.notes}</div>
-        </div>
-        `
-            : ''
-        }
-        <div class="detail-item">
-          <div class="detail-label">Created:</div>
-          <div class="detail-value">${new Date(
-            apt.created_at
-          ).toLocaleString()}</div>
-        </div>
-      `
-
-      // Set appointment ID for action buttons
-      document.getElementById('appointment-modal').dataset.appointmentId =
-        apt.id
-
-      // Show/hide buttons based on status
-      const confirmBtn = document.getElementById('confirm-appointment')
-      const completeBtn = document.getElementById('complete-appointment')
-      const cancelBtn = document.getElementById('cancel-appointment')
-
-      confirmBtn.style.display =
-        apt.status === 'pending' ? 'inline-block' : 'none'
-      completeBtn.style.display =
-        apt.status === 'confirmed' ? 'inline-block' : 'none'
-      cancelBtn.style.display =
-        apt.status !== 'cancelled' && apt.status !== 'completed'
-          ? 'inline-block'
-          : 'none'
-    })
-    .catch((error) => {
-      console.error('Error loading appointment details:', error)
-      detailsContainer.innerHTML = `<p style="color: #721c24;">Error loading appointment details: ${error.message}</p>`
-    })
-}
-
-// Open user details modal
-function openUserModal(userId) {
-  const modal = document.getElementById('user-modal')
-  const detailsContainer = document.getElementById('user-details')
-  const appointmentsContainer = document.getElementById(
-    'user-appointments-list'
-  )
-
-  // Show loading
-  detailsContainer.innerHTML = '<p>Loading user details...</p>'
-  appointmentsContainer.innerHTML = '<p>Loading user appointments...</p>'
-
-  // Show the modal
-  modal.style.display = 'block'
-
-  // Fetch user details
-  fetch(`http://localhost:3000/api/users/${userId}`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch user details')
-      }
-      return response.json()
-    })
-    .then((data) => {
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to load user details')
-      }
-
-      const user = data.user
-
-      // Format date of birth if available
-      let formattedDob = 'Not provided'
-      if (user.dob) {
-        try {
-          // Add time component with explicit Philippine timezone if not present
-          const dobStr = user.dob.includes('T')
-            ? user.dob
-            : `${user.dob}T00:00:00+08:00`
-
-          const dobDate = new Date(dobStr)
-
-          // Check if date is valid before formatting
-          if (!isNaN(dobDate.getTime())) {
-            formattedDob = dobDate.toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
-            })
-          }
-        } catch (err) {
-          console.error('Error formatting date of birth:', err)
-          formattedDob = user.dob || 'Not provided'
-        }
-      }
-
-      // Format join date
-      let formattedJoinDate = 'Unknown'
-      try {
-        const joinStr = user.created_at.includes('T')
-          ? user.created_at
-          : `${user.created_at}T00:00:00+08:00`
-
-        const joinDate = new Date(joinStr)
-
-        if (!isNaN(joinDate.getTime())) {
-          formattedJoinDate = joinDate.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
-          })
-        }
-      } catch (err) {
-        console.error('Error formatting join date:', err)
-        formattedJoinDate = user.created_at || 'Unknown'
-      }
-
-      // Populate details
-      detailsContainer.innerHTML = `
-        <div class="detail-item">
-          <div class="detail-label">ID:</div>
-          <div class="detail-value">${user.id}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Name:</div>
-          <div class="detail-value">${user.name}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Email:</div>
-          <div class="detail-value">${user.email}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Phone:</div>
-          <div class="detail-value">${user.phone || 'Not provided'}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Date of Birth:</div>
-          <div class="detail-value">${formattedDob}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Gender:</div>
-          <div class="detail-value">${user.gender || 'Not specified'}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Role:</div>
-          <div class="detail-value">${user.role}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Address:</div>
-          <div class="detail-value">${user.address || 'Not provided'}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Joined:</div>
-          <div class="detail-value">${formattedJoinDate}</div>
-        </div>
-      `
-
-      // Set user ID for action buttons
-      document.getElementById('user-modal').dataset.userId = user.id
-
-      // Load user appointments
-      return fetch(`http://localhost:3000/api/appointments/user/${userId}`)
-    })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch user appointments')
-      }
-      return response.json()
-    })
-    .then((data) => {
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to load user appointments')
+        throw new Error(
+          data.message || 'Failed to load transferable appointments'
+        )
       }
 
       const appointments = data.appointments
 
-      if (appointments.length === 0) {
-        appointmentsContainer.innerHTML =
-          '<p class="no-data-message" style="display: block;">No appointments found for this user.</p>'
+      if (!appointments || appointments.length === 0) {
+        tableBody.style.display = 'none' // Hide table body if no data
+        if (noDataMsg) noDataMsg.style.display = 'block'
       } else {
-        // Clear container
-        appointmentsContainer.innerHTML = ''
+        tableBody.style.display = 'table-row-group' // Show table body
+        if (noDataMsg) noDataMsg.style.display = 'none'
 
-        // Add appointments to list
         appointments.forEach((apt) => {
-          // Format date properly with explicit Philippine timezone
-          let formattedDate = 'Invalid date'
+          // Format date and time
+          let formattedDate = 'N/A'
+          let formattedTime = 'N/A'
 
           try {
+            // Use consistent date formatting as in loadAppointments
             if (apt.date) {
-              // Add time component with explicit Philippine timezone if not present
               const dateStr = apt.date.includes('T')
                 ? apt.date
-                : `${apt.date}T00:00:00+08:00`
-
+                : `${apt.date}T00:00:00+08:00` // Assume PH time if only date
               const dateObj = new Date(dateStr)
-
-              // Check if date is valid before formatting
               if (!isNaN(dateObj.getTime())) {
                 formattedDate = dateObj.toLocaleDateString('en-US', {
+                  weekday: 'short',
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric',
                   timeZone: 'Asia/Manila', // Explicitly use Philippine timezone
                 })
+              } else {
+                formattedDate = 'Invalid Date' // Handle invalid date object
+              }
+            }
+
+            if (apt.time) {
+              const [hours, minutes] = apt.time.split(':')
+              if (!isNaN(hours) && !isNaN(minutes)) {
+                const timeObj = new Date()
+                // Set hours and minutes based on the time string
+                timeObj.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0)
+                formattedTime = timeObj.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true, // Use AM/PM format
+                })
+              } else {
+                formattedTime = 'Invalid Time' // Handle invalid time string
               }
             }
           } catch (err) {
-            console.error('Error formatting user appointment date:', err)
-            formattedDate = apt.date || 'Unknown date'
+            console.error('Error formatting date/time:', err)
+            formattedDate = apt.date || 'Date Error' // Fallback on error
+            formattedTime = apt.time || 'Time Error' // Fallback on error
           }
 
-          // Format time if available
-          let formattedTime = 'N/A'
-          if (apt.time) {
-            try {
-              const [hours, minutes] = apt.time.split(':')
-              const timeObj = new Date()
-              timeObj.setHours(hours, minutes, 0)
-              formattedTime = timeObj.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })
-            } catch (err) {
-              console.error('Error formatting user appointment time:', err)
-              formattedTime = apt.time || 'N/A'
-            }
-          }
+          const row = document.createElement('tr')
+          row.dataset.appointmentId = apt.id
+          row.dataset.date = apt.date || ''
+          row.dataset.status = apt.transfer_status || 'available'
 
-          const item = document.createElement('div')
-          item.className = 'user-appointment-item'
-          item.innerHTML = `
-            <div>
-              <strong>${apt.service}</strong> with ${apt.dentist}
-            </div>
-            <div>
-              ${formattedDate} at ${formattedTime}
-            </div>
-            <div>
-              Status: <span class="appointment-status status-${apt.status}">
-                ${apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
+          // Correctly align data with table columns
+          row.innerHTML = `
+            <td>${apt.id}</td>
+            <td>${apt.userName || 'Unknown'}</td>
+            <td>${apt.service}</td>
+            <td>${formattedDate}<br>${formattedTime}</td>
+            <td>${apt.original_dentist || 'N/A'}</td>
+            <td>
+              <span class="appointment-status status-${
+                apt.transfer_status || 'available'
+              }">
+                ${
+                  (apt.transfer_status || 'available').charAt(0).toUpperCase() +
+                  (apt.transfer_status || 'available').slice(1)
+                }
               </span>
-            </div>
+            </td>
           `
-          appointmentsContainer.appendChild(item)
+
+          tableBody.appendChild(row)
         })
+        // Apply filters after loading data
+        filterTransferableAppointments()
       }
     })
     .catch((error) => {
-      console.error('Error loading user details:', error)
-      detailsContainer.innerHTML = `<p style="color: #721c24;">Error loading user details: ${error.message}</p>`
-      appointmentsContainer.innerHTML = `<p style="color: #721c24;">Error loading user appointments: ${error.message}</p>`
+      console.error('Error loading transferable appointments:', error)
+      // Ensure error message also uses colspan 6
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; color: #721c24;">
+            Error: ${error.message}
+          </td>
+        </tr>
+      `
+      tableBody.style.display = 'table-row-group' // Ensure table body is visible for error
+      if (noDataMsg) noDataMsg.style.display = 'none' // Hide no data message
     })
 }
 
-// Open role change modal
-function openRoleModal(userId) {
-  // Fetch current user info first
-  fetch(`http://localhost:3000/api/users/${userId}`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch user details')
-      }
-      return response.json()
-    })
-    .then((data) => {
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to load user details')
-      }
+// Filter transferable appointments
+function filterTransferableAppointments() {
+  const statusFilter =
+    document.getElementById('transfer-status-filter')?.value || 'all'
+  const dateFilter =
+    document.getElementById('transfer-date-filter')?.value || ''
 
-      const user = data.user
-
-      // Set user ID in hidden field
-      document.getElementById('user-id').value = userId
-
-      // Set current role in select
-      document.getElementById('user-role').value = user.role
-
-      // Show the modal
-      document.getElementById('role-modal').style.display = 'block'
-    })
-    .catch((error) => {
-      console.error('Error loading user details for role change:', error)
-      alert(`Error: ${error.message}`)
-    })
-}
-
-// Update appointment status
-function updateAppointmentStatus(appointmentId, status) {
-  // If cancelling, check date first
-  if (status === 'cancelled') {
-    // For admin, we'll still allow cancellation but show a warning for same-day appointments
-    fetch(`http://localhost:3000/api/appointments/${appointmentId}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch appointment details')
-        }
-        return response.json()
-      })
-      .then((data) => {
-        if (!data.success || !data.appointment) {
-          throw new Error('Failed to retrieve appointment information')
-        }
-
-        const appointment = data.appointment
-
-        // Create date objects with proper timezone handling
-        let appointmentDate
-
-        try {
-          if (appointment.date) {
-            // Add time component with explicit Philippine timezone if not present
-            const dateStr = appointment.date.includes('T')
-              ? appointment.date
-              : `${appointment.date}T00:00:00+08:00`
-
-            appointmentDate = new Date(dateStr)
-
-            // If date is invalid, throw error
-            if (isNaN(appointmentDate.getTime())) {
-              throw new Error('Invalid appointment date')
-            }
-          } else {
-            throw new Error('Missing appointment date')
-          }
-
-          const today = new Date()
-
-          // Set both to midnight for date comparison only
-          appointmentDate.setHours(0, 0, 0, 0)
-          today.setHours(0, 0, 0, 0)
-
-          // For admins, show warning but allow the cancellation
-          if (appointmentDate.getTime() <= today.getTime()) {
-            showConfirmDialog(
-              '<b>Warning:</b> This is a same-day or past appointment cancellation. The patient may need to be notified immediately.<br><br>Are you sure you want to proceed?',
-              () => processStatusUpdate(appointmentId, status),
-              null,
-              'Proceed with Cancellation',
-              'Go Back'
-            )
-            return
-          }
-
-          // If not same-day, proceed normally
-          showConfirmDialog(
-            `Are you sure you want to cancel this appointment?<br><br>
-            <div class="downpayment-notice">
-              <i class="fas fa-info-circle"></i> Remember to handle any downpayment refunds if applicable.
-            </div>`,
-            () => processStatusUpdate(appointmentId, status)
-          )
-        } catch (err) {
-          console.error('Error validating appointment date:', err)
-          showToast(
-            `Error validating appointment date: ${err.message}`,
-            TOAST_LEVELS.ERROR
-          )
-          return
-        }
-      })
-      .catch((error) => {
-        console.error('Error checking appointment date:', error)
-        showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
-      })
-  } else {
-    // For non-cancellation status updates, proceed normally
-    processStatusUpdate(appointmentId, status)
-  }
-}
-
-// Helper function to process the actual status update
-function processStatusUpdate(appointmentId, status) {
-  fetch(`http://localhost:3000/api/appointments/${appointmentId}/status`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ status }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return response
-          .json()
-          .then((data) => {
-            throw new Error(
-              data.message || 'Failed to update appointment status'
-            )
-          })
-          .catch(() => {
-            throw new Error(`Server error: ${response.status}`)
-          })
-      }
-      return response.json()
-    })
-    .then((data) => {
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to update appointment status')
-      }
-
-      // Close modal and reload appointments
-      closeModal('appointment-modal')
-      showToast(`Appointment ${status} successfully!`, TOAST_LEVELS.SUCCESS)
-      loadAppointments()
-    })
-    .catch((error) => {
-      console.error('Error updating appointment status:', error)
-      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
-    })
-}
-
-// Update user role
-function updateUserRole(userId, role) {
-  fetch(`http://localhost:3000/api/users/${userId}/role`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ role }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return response
-          .json()
-          .then((data) => {
-            throw new Error(data.message || 'Failed to update user role')
-          })
-          .catch(() => {
-            throw new Error(`Server error: ${response.status}`)
-          })
-      }
-      return response.json()
-    })
-    .then((data) => {
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to update user role')
-      }
-
-      // Close modals and reload users
-      closeModal('role-modal')
-      closeModal('user-modal')
-      loadUsers()
-    })
-    .catch((error) => {
-      console.error('Error updating user role:', error)
-      alert(`Error: ${error.message}`)
-    })
-}
-
-// Close any modal
-function closeModal(modalId = null) {
-  if (modalId) {
-    document.getElementById(modalId).style.display = 'none'
-  } else {
-    // Close all modals
-    const modals = document.querySelectorAll('.modal')
-    modals.forEach((modal) => {
-      modal.style.display = 'none'
-    })
-  }
-}
-
-// Filter appointments by status and/or date
-function filterAppointments() {
-  const statusFilter = document.getElementById('status-filter').value
-  const dateFilter = document.getElementById('date-filter').value
-
-  const rows = document.querySelectorAll('#admin-appointments-table tbody tr')
+  const rows = document.querySelectorAll('#transferable-appointments-data tr')
   let visibleCount = 0
 
   rows.forEach((row) => {
@@ -1229,8 +682,7 @@ function filterAppointments() {
 
     // Filter by status
     if (statusFilter !== 'all') {
-      const statusCell = row.querySelector('.appointment-status')
-      const rowStatus = statusCell.className.split('status-')[1].split(' ')[0]
+      const rowStatus = row.dataset.status
       if (rowStatus !== statusFilter) {
         showRow = false
       }
@@ -1238,36 +690,19 @@ function filterAppointments() {
 
     // Filter by date
     if (dateFilter && showRow) {
-      const dateCell = row.querySelector('td:nth-child(4)').textContent
-
-      // Extract just the date part from the cell text which might include time
-      const datePart = dateCell.split('<br>')[0].trim()
-
       try {
-        // Add time component with Philippines timezone
-        const dateStr = `${dateFilter}T00:00:00+08:00`
-        const filterDate = new Date(dateStr)
+        const rowDate = new Date(row.dataset.date)
+        const filterDate = new Date(dateFilter)
 
-        // Create date object for row date with Philippines timezone
-        const rowDateStr = `${datePart}T00:00:00+08:00`
-        const rowDate = new Date(rowDateStr)
-
-        if (isNaN(rowDate.getTime()) || isNaN(filterDate.getTime())) {
-          // If either date is invalid, don't show the row
+        if (
+          rowDate.getFullYear() !== filterDate.getFullYear() ||
+          rowDate.getMonth() !== filterDate.getMonth() ||
+          rowDate.getDate() !== filterDate.getDate()
+        ) {
           showRow = false
-        } else {
-          // Just compare the date parts (year, month, day)
-          if (
-            rowDate.getFullYear() !== filterDate.getFullYear() ||
-            rowDate.getMonth() !== filterDate.getMonth() ||
-            rowDate.getDate() !== filterDate.getDate()
-          ) {
-            showRow = false
-          }
         }
       } catch (err) {
-        console.error('Error comparing dates in filter:', err)
-        showRow = false
+        console.error('Error comparing dates:', err)
       }
     }
 
@@ -1281,118 +716,257 @@ function filterAppointments() {
   })
 
   // Show or hide "no appointments" message
-  const noAppointmentsMsg = document.getElementById('no-appointments')
-  if (visibleCount === 0) {
-    noAppointmentsMsg.style.display = 'block'
-  } else {
-    noAppointmentsMsg.style.display = 'none'
+  const noDataMsg = document.getElementById('no-transferable-appointments')
+  if (noDataMsg) {
+    noDataMsg.style.display = visibleCount === 0 ? 'block' : 'none'
   }
 }
 
-// Filter users by role and/or search term
-function filterUsers() {
-  const roleFilter = document.getElementById('role-filter').value
-  const searchTerm = document.getElementById('search-users').value.toLowerCase()
+// Open assign dentist modal for transferable appointments
+function openAssignDentistModal(appointmentId) {
+  // Display loading indicator
+  showToast('Loading dentist information...', TOAST_LEVELS.INFO)
 
-  const rows = document.querySelectorAll('#users-table tbody tr')
-  let visibleCount = 0
-
-  rows.forEach((row) => {
-    let showRow = true
-
-    // Filter by role
-    if (roleFilter !== 'all') {
-      const roleCell = row.querySelector('.user-role')
-      const rowRole = roleCell.className.split('role-')[1].split(' ')[0]
-      if (rowRole !== roleFilter) {
-        showRow = false
+  // Get dentist list first
+  fetch('http://localhost:3000/api/dentist/all')
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch dentists: ${response.status}`)
       }
-    }
-
-    // Filter by search term
-    if (searchTerm && showRow) {
-      const nameCell = row
-        .querySelector('td:nth-child(2)')
-        .textContent.toLowerCase()
-      const emailCell = row
-        .querySelector('td:nth-child(3)')
-        .textContent.toLowerCase()
-      if (!nameCell.includes(searchTerm) && !emailCell.includes(searchTerm)) {
-        showRow = false
+      return response.json()
+    })
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to load dentists')
       }
-    }
 
-    // Show or hide row
-    if (showRow) {
-      row.style.display = ''
-      visibleCount++
-    } else {
-      row.style.display = 'none'
-    }
+      // Get appointment details
+      return fetch(`http://localhost:3000/api/appointments/${appointmentId}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch appointment details')
+          }
+          return response.json()
+        })
+        .then((aptData) => {
+          if (!aptData.success) {
+            throw new Error(aptData.message || 'Failed to load appointment')
+          }
+
+          const appointment = aptData.appointment
+          const dentists = data.dentists
+
+          // Create modal HTML
+          const modal = document.createElement('div')
+          modal.className = 'modal'
+          modal.id = 'assign-dentist-modal'
+          modal.innerHTML = `
+            <div class="modal-content">
+              <div class="modal-header">
+                <h2>Assign Appointment to Dentist</h2>
+                <span class="close">&times;</span>
+              </div>
+              <div class="modal-body">
+                <p>
+                  <strong>Patient:</strong> ${
+                    appointment.userName || 'Unknown'
+                  }<br>
+                  <strong>Service:</strong> ${appointment.service}<br>
+                  <strong>Date:</strong> ${new Date(
+                    appointment.date
+                  ).toLocaleDateString()}<br>
+                  <strong>Time:</strong> ${appointment.time}<br>
+                  <strong>Original Dentist:</strong> ${
+                    appointment.original_dentist || 'N/A'
+                  }<br>
+                </p>
+                
+                <div class="form-group">
+                  <label for="dentist-select">Select Dentist:</label>
+                  <select id="dentist-select" class="form-control">
+                    <option value="">-- Select a dentist --</option>
+                    ${dentists
+                      .filter((d) => d.name !== appointment.original_dentist)
+                      .map(
+                        (d) =>
+                          `<option value="${d.id}" data-name="${d.name}">${d.name}</option>`
+                      )
+                      .join('')}
+                  </select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button id="cancel-assign" class="btn btn-secondary">Cancel</button>
+                <button id="confirm-assign" class="btn btn-primary">Assign</button>
+              </div>
+            </div>
+          `
+
+          document.body.appendChild(modal)
+
+          // Show modal
+          modal.style.display = 'block'
+
+          // Add event listeners
+          modal.querySelector('.close').addEventListener('click', () => {
+            document.body.removeChild(modal)
+          })
+
+          document
+            .getElementById('cancel-assign')
+            .addEventListener('click', () => {
+              document.body.removeChild(modal)
+            })
+
+          document
+            .getElementById('confirm-assign')
+            .addEventListener('click', () => {
+              const select = document.getElementById('dentist-select')
+              const dentistId = select.value
+              const dentistName =
+                select.options[select.selectedIndex].dataset.name
+
+              if (!dentistId) {
+                showToast('Please select a dentist', TOAST_LEVELS.ERROR)
+                return
+              }
+
+              // Call API to assign dentist
+              assignTransferableAppointment(
+                appointmentId,
+                dentistName,
+                dentistId,
+                modal
+              )
+            })
+        })
+    })
+    .catch((error) => {
+      console.error('Error opening assign dentist modal:', error)
+      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+    })
+}
+
+// Assign transferable appointment to a dentist
+function assignTransferableAppointment(
+  appointmentId,
+  dentistName,
+  dentistId,
+  modal
+) {
+  // Use the correct endpoint for admin assignment: /assign
+  fetch(`http://localhost:3000/api/appointments/${appointmentId}/assign`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      dentistName, // Backend expects dentistName
+      dentistId, // Backend expects dentistId
+    }),
   })
+    .then((response) => {
+      if (!response.ok) {
+        return response
+          .json()
+          .then((data) => {
+            // Provide more specific error message if available
+            throw new Error(
+              data.message ||
+                `Failed to assign appointment (Status: ${response.status})`
+            )
+          })
+          .catch(() => {
+            // Fallback error
+            throw new Error(`Server error: ${response.status}`)
+          })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to assign appointment')
+      }
 
-  // Show or hide "no users" message
-  const noUsersMsg = document.getElementById('no-users')
-  if (visibleCount === 0) {
-    noUsersMsg.style.display = 'block'
-  } else {
-    noUsersMsg.style.display = 'none'
-  }
+      // Remove modal
+      if (modal && modal.parentNode) {
+        modal.parentNode.removeChild(modal)
+      }
+
+      // Show success message
+      showToast('Appointment assigned successfully', TOAST_LEVELS.SUCCESS)
+
+      // Reload tables
+      loadTransferableAppointments() // Reload to remove from transferable list
+      loadAppointments() // Reload to show updated assignment
+    })
+    .catch((error) => {
+      console.error('Error assigning appointment:', error)
+      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+    })
 }
 
-// Setup all event listeners
+// Setup event listeners for various interactions
 function setupEventListeners() {
   // Logout button
-  document.getElementById('logout-btn').addEventListener('click', function (e) {
-    e.preventDefault()
-    localStorage.removeItem('user')
-    window.location.href = 'index.html'
-  })
+  document
+    .getElementById('logout-btn')
+    ?.addEventListener('click', function (e) {
+      e.preventDefault()
+      localStorage.removeItem('user')
+      window.location.href = 'index.html'
+    })
 
   // Appointment filters
   document
     .getElementById('status-filter')
-    .addEventListener('change', filterAppointments)
+    ?.addEventListener('change', filterAppointments)
   document
     .getElementById('date-filter')
-    .addEventListener('input', filterAppointments)
+    ?.addEventListener('input', filterAppointments)
   document
     .getElementById('clear-filters')
-    .addEventListener('click', function () {
+    ?.addEventListener('click', function () {
       document.getElementById('status-filter').value = 'all'
       document.getElementById('date-filter').value = ''
       filterAppointments()
     })
 
-  // User filters
-  document.getElementById('role-filter').addEventListener('change', filterUsers)
-  document.getElementById('search-users').addEventListener('input', filterUsers)
+  // User Filters
+  document
+    .getElementById('search-users')
+    ?.addEventListener('input', filterUsers)
+  document
+    .getElementById('role-filter')
+    ?.addEventListener('change', filterUsers)
   document
     .getElementById('clear-user-filters')
-    .addEventListener('click', function () {
-      document.getElementById('role-filter').value = 'all'
+    ?.addEventListener('click', function () {
       document.getElementById('search-users').value = ''
+      document.getElementById('role-filter').value = 'all'
       filterUsers()
     })
 
-  // Analytics date range
-  document
-    .getElementById('update-analytics')
-    .addEventListener('click', function () {
-      const startDate = document.getElementById('analytics-start-date').value
-      const endDate = document.getElementById('analytics-end-date').value
-      fetchAnalyticsData(startDate, endDate)
-    })
+  // Main Appointments table actions (Event Delegation)
+  const appointmentsTableBody = document.getElementById('appointments-data')
+  if (appointmentsTableBody) {
+    appointmentsTableBody.addEventListener('click', function (e) {
+      // Find the button that was clicked, or its parent if icon was clicked
+      let target = null
+      if (e.target.tagName === 'I') {
+        // If user clicked the icon inside the button
+        target = e.target.parentElement
+      } else if (e.target.classList.contains('action-btn')) {
+        // If user clicked the button directly
+        target = e.target
+      }
 
-  // Appointment actions (delegation)
-  document
-    .getElementById('appointments-data')
-    .addEventListener('click', function (e) {
-      const target = e.target.closest('button')
       if (!target) return
 
       const row = target.closest('tr')
-      const appointmentId = row.dataset.appointmentId
+      const appointmentId = row?.dataset.appointmentId
+
+      if (!appointmentId) return
 
       if (target.classList.contains('btn-view')) {
         openAppointmentModal(appointmentId)
@@ -1411,309 +985,328 @@ function setupEventListeners() {
           'Are you sure you want to cancel this appointment?',
           () => updateAppointmentStatus(appointmentId, 'cancelled')
         )
+      } else if (target.classList.contains('btn-assign')) {
+        openAssignDentistModal(appointmentId)
       }
     })
+  }
 
-  // User actions (delegation)
-  document.getElementById('users-data').addEventListener('click', function (e) {
-    const target = e.target.closest('button')
-    if (!target) return
+  // Users table actions (Event Delegation)
+  const usersTableBody = document.getElementById('users-data')
+  if (usersTableBody) {
+    usersTableBody.addEventListener('click', function (e) {
+      let target = null
+      if (e.target.tagName === 'I') {
+        target = e.target.parentElement
+      } else if (e.target.classList.contains('action-btn')) {
+        target = e.target
+      }
 
-    const row = target.closest('tr')
-    const userId = row.dataset.userId
+      if (!target) return
 
-    if (target.classList.contains('btn-view')) {
-      openUserModal(userId)
-    } else if (target.classList.contains('btn-edit')) {
-      openRoleModal(userId)
+      const row = target.closest('tr')
+      const userId = row?.dataset.userId
+      const currentRole = row?.dataset.userRole
+
+      if (!userId) return
+
+      if (target.classList.contains('btn-view-user')) {
+        openUserDetailsModal(userId)
+      } else if (target.classList.contains('btn-change-role')) {
+        openChangeRoleModal(userId, currentRole)
+      }
+    })
+  }
+
+  // Modal close buttons (General)
+  document.addEventListener('click', function (e) {
+    // Close any modal if the close button (span.close) is clicked
+    if (e.target.matches('.modal .close')) {
+      const modal = e.target.closest('.modal')
+      if (modal) {
+        modal.style.display = 'none'
+      }
+    }
+    // Close specific modals via their dedicated close/cancel buttons
+    if (e.target.matches('#close-modal')) {
+      document.getElementById('appointment-modal').style.display = 'none'
+    }
+    if (e.target.matches('#close-user-modal')) {
+      document.getElementById('user-modal').style.display = 'none'
+    }
+    if (e.target.matches('#cancel-role-change')) {
+      document.getElementById('role-modal').style.display = 'none'
+    }
+    // Close modal if clicking outside the modal content
+    if (e.target.matches('.modal')) {
+      e.target.style.display = 'none'
     }
   })
 
-  // Modal close buttons
-  document
-    .querySelectorAll('.close, #close-modal, #close-user-modal')
-    .forEach((element) => {
-      element.addEventListener('click', function () {
-        closeModal()
-      })
-    })
-
-  // Add explicit handler for the button to close appointment modal
-  document.getElementById('close-modal').addEventListener('click', function () {
-    closeModal('appointment-modal')
-  })
-
-  // Add explicit handler for the button to close user modal
-  document
-    .getElementById('close-user-modal')
-    .addEventListener('click', function () {
-      closeModal('user-modal')
-    })
-
-  document
-    .getElementById('cancel-role-change')
-    .addEventListener('click', function () {
-      closeModal('role-modal')
-    })
-
-  // Appointment action buttons in modal
-  document
-    .getElementById('confirm-appointment')
-    .addEventListener('click', function () {
-      const appointmentId =
-        document.getElementById('appointment-modal').dataset.appointmentId
-      showConfirmDialog(
-        'Are you sure you want to confirm this appointment?',
-        () => updateAppointmentStatus(appointmentId, 'confirmed')
-      )
-    })
-
-  document
-    .getElementById('complete-appointment')
-    .addEventListener('click', function () {
-      const appointmentId =
-        document.getElementById('appointment-modal').dataset.appointmentId
-      showConfirmDialog(
-        'Are you sure you want to mark this appointment as completed?',
-        () => updateAppointmentStatus(appointmentId, 'completed')
-      )
-    })
-
-  document
-    .getElementById('cancel-appointment')
-    .addEventListener('click', function () {
-      const appointmentId =
-        document.getElementById('appointment-modal').dataset.appointmentId
-      showConfirmDialog(
-        'Are you sure you want to cancel this appointment?',
-        () => updateAppointmentStatus(appointmentId, 'cancelled')
-      )
-    })
-
-  // Edit user role button in user modal
-  document
-    .getElementById('edit-user-role')
-    .addEventListener('click', function () {
-      const userId = document.getElementById('user-modal').dataset.userId
-      openRoleModal(userId)
-    })
-
-  // Change role form submission
-  document
-    .getElementById('change-role-form')
-    .addEventListener('submit', function (e) {
-      e.preventDefault()
-      const userId = document.getElementById('user-id').value
-      const role = document.getElementById('user-role').value
-      updateUserRole(userId, role)
-    })
-
-  // Close modals if clicked outside
-  window.addEventListener('click', function (e) {
-    if (e.target.classList.contains('modal')) {
-      closeModal(e.target.id)
-    }
-  })
-
-  // --- Clinic Availability Listeners ---
-
-  // Permanent clinic closure form submission
-  const permanentForm = document.getElementById(
-    'clinic-permanent-unavailability-form'
-  )
-  if (permanentForm) {
-    permanentForm.addEventListener('submit', function (e) {
-      e.preventDefault()
-      const checkboxes = document.querySelectorAll(
-        'input[name="clinic-permanent-unavailable"]:checked'
-      )
-      const daysOfWeek = Array.from(checkboxes).map((cb) => parseInt(cb.value))
-
-      showClinicPermanentUnavailabilityStatus(
-        'Saving permanent closures...',
-        'info'
-      )
-
-      saveClinicPermanentUnavailability(daysOfWeek)
-        .then((data) => {
-          if (!data.success) throw new Error(data.message)
-          showClinicPermanentUnavailabilityStatus(
-            'Permanent closures saved successfully!',
-            'success'
-          )
-          loadClinicPermanentUnavailableDays() // Reload the list and update checkboxes
-        })
-        .catch((error) => {
-          showClinicPermanentUnavailabilityStatus(
-            'Error: ' + error.message,
-            'error'
-          )
-        })
-    })
+  // Change Role Modal Form Submission
+  const changeRoleForm = document.getElementById('change-role-form')
+  if (changeRoleForm) {
+    changeRoleForm.addEventListener('submit', updateUserRole)
   }
 
-  // Temporary clinic closure form submission
-  const temporaryForm = document.getElementById(
-    'clinic-temporary-unavailability-form'
-  )
-  if (temporaryForm) {
-    temporaryForm.addEventListener('submit', function (e) {
-      e.preventDefault()
-      const startDate = document.getElementById(
-        'clinic-unavailable-date-start'
-      ).value
-      const endDateInput = document.getElementById(
-        'clinic-unavailable-date-end'
-      )
-      const endDate = endDateInput.value || startDate // Use start date if end date is empty
-      const reason = document
-        .getElementById('clinic-unavailability-reason')
-        .value.trim()
-
-      if (!startDate) {
-        showClinicTemporaryUnavailabilityStatus(
-          'Please select a start date',
-          'error'
-        )
-        return
+  // User Details Modal - Change Role Button
+  const editUserRoleBtn = document.getElementById('edit-user-role')
+  if (editUserRoleBtn) {
+    editUserRoleBtn.addEventListener('click', function () {
+      const userModal = document.getElementById('user-modal')
+      const userId = userModal?.dataset.userId
+      const userRole = userModal?.dataset.userRole
+      if (userId && userRole) {
+        openChangeRoleModal(userId, userRole)
+      } else {
+        showToast('Could not get user ID or role.', TOAST_LEVELS.ERROR)
       }
-
-      // Ensure end date is not before start date
-      if (endDate < startDate) {
-        showClinicTemporaryUnavailabilityStatus(
-          'End date cannot be before start date',
-          'error'
-        )
-        return
-      }
-
-      showClinicTemporaryUnavailabilityStatus(
-        'Saving temporary closure...',
-        'info'
-      )
-
-      saveClinicTemporaryUnavailability(startDate, endDate, reason || null)
-        .then((data) => {
-          if (!data.success) throw new Error(data.message)
-          showClinicTemporaryUnavailabilityStatus(
-            'Temporary closure saved successfully!',
-            'success'
-          )
-          // Clear form
-          temporaryForm.reset()
-          loadClinicTemporaryUnavailableDays() // Reload the list
-        })
-        .catch((error) => {
-          showClinicTemporaryUnavailabilityStatus(
-            'Error: ' + error.message,
-            'error'
-          )
-        })
     })
   }
-
-  // Delete clinic temporary unavailability (delegation)
-  const temporaryList = document.getElementById(
-    'clinic-temporary-unavailability-list'
-  )
-  if (temporaryList) {
-    temporaryList.addEventListener('click', function (e) {
-      const target = e.target.closest('button')
-      if (
-        !target ||
-        !target.classList.contains('delete-clinic-temporary-unavailability')
-      )
-        return
-
-      const item = target.closest('.unavailability-item')
-      const unavailabilityId = item.dataset.unavailabilityId
-
-      showConfirmDialog(
-        'Are you sure you want to remove this temporary closure period?',
-        () => {
-          deleteClinicTemporaryUnavailability(unavailabilityId)
-            .then((data) => {
-              if (!data.success) throw new Error(data.message)
-              showToast(
-                'Temporary closure removed successfully!',
-                TOAST_LEVELS.SUCCESS
-              )
-              loadClinicTemporaryUnavailableDays() // Reload list
-            })
-            .catch((error) => {
-              showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
-            })
-        }
-      )
-    })
-  }
-
-  // Delete clinic permanent unavailability (delegation)
-  const permanentList = document.getElementById(
-    'clinic-permanent-unavailability-list'
-  )
-  if (permanentList) {
-    permanentList.addEventListener('click', function (e) {
-      const target = e.target.closest('button')
-      if (
-        !target ||
-        !target.classList.contains('delete-clinic-permanent-unavailability')
-      )
-        return
-
-      const item = target.closest('.unavailability-item')
-      const dayId = item.dataset.dayId
-
-      showConfirmDialog(
-        'Are you sure you want to remove this permanent clinic closure day?',
-        () => {
-          deleteClinicPermanentUnavailability(dayId)
-            .then((data) => {
-              if (!data.success) throw new Error(data.message)
-              showToast(
-                'Permanent closure day removed successfully!',
-                TOAST_LEVELS.SUCCESS
-              )
-              loadClinicPermanentUnavailableDays() // Reload list
-            })
-            .catch((error) => {
-              showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
-            })
-        }
-      )
-    })
-  }
-
-  // --- End Clinic Availability Listeners ---
 }
 
-// Admin auth check function
-function checkAdminAuth() {
-  try {
-    const userString = localStorage.getItem('user')
-    if (!userString) {
-      window.location.replace('login.html')
-      return null
+// Filter appointments in the main table (Example, adapt as needed)
+function filterAppointments() {
+  const statusFilter = document.getElementById('status-filter').value
+  const dateFilter = document.getElementById('date-filter').value
+  const tableBody = document.getElementById('appointments-data')
+  const rows = tableBody.querySelectorAll('tr')
+  const noAppointmentsMsg = document.getElementById('no-appointments')
+  let visibleCount = 0
+
+  rows.forEach((row) => {
+    const statusCell = row.querySelector('td:nth-child(6) span')
+    const dateCell = row.querySelector('td:nth-child(4)')
+    if (!statusCell || !dateCell) return // Skip header or loading rows
+
+    const rowStatus = statusCell.className.replace(
+      'appointment-status status-',
+      ''
+    )
+    const rowDateStr = dateCell.innerText.split('\n')[0] // Get only the date part
+
+    let showRow = true
+
+    // Filter by status
+    if (statusFilter !== 'all' && rowStatus !== statusFilter) {
+      showRow = false
     }
 
-    const user = JSON.parse(userString)
-    if (!user || !user.id) {
-      localStorage.removeItem('user')
-      window.location.replace('login.html')
-      return null
+    // Filter by date
+    if (dateFilter && showRow) {
+      try {
+        // Convert row date string (e.g., "Mon, Jan 1, 2024") to comparable format
+        const rowDate = new Date(rowDateStr)
+        const filterDate = new Date(dateFilter + 'T00:00:00') // Ensure comparison is date-only
+
+        if (
+          rowDate.getFullYear() !== filterDate.getFullYear() ||
+          rowDate.getMonth() !== filterDate.getMonth() ||
+          rowDate.getDate() !== filterDate.getDate()
+        ) {
+          showRow = false
+        }
+      } catch (err) {
+        console.error('Error comparing dates:', err)
+        showRow = false // Hide if date parsing fails
+      }
     }
 
-    if (user.role !== 'admin') {
-      alert('Access denied. Admin privileges required.')
-      window.location.replace('dashboard.html')
-      return null
+    // Show/hide row
+    row.style.display = showRow ? '' : 'none'
+    if (showRow) {
+      visibleCount++
     }
+  })
 
-    return user
-  } catch (error) {
-    console.error('Error checking admin authentication:', error)
-    localStorage.removeItem('user')
-    window.location.replace('login.html')
-    return null
+  // Show/hide no data message
+  if (noAppointmentsMsg) {
+    noAppointmentsMsg.style.display = visibleCount === 0 ? 'block' : 'none'
+  }
+}
+
+// Update appointment status (Adapt from dentist.js or create new)
+function updateAppointmentStatus(appointmentId, newStatus) {
+  fetch(`http://localhost:3000/api/appointments/${appointmentId}/status`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status: newStatus }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then((err) => {
+          throw new Error(
+            err.message || `HTTP error! status: ${response.status}`
+          )
+        })
+      }
+      return response.json()
+    })
+    .then((data) => {
+      if (data.success) {
+        showToast(
+          `Appointment ${newStatus} successfully!`,
+          TOAST_LEVELS.SUCCESS
+        )
+        loadAppointments() // Reload the appointments table
+        closeModal() // Close modal if open
+      } else {
+        throw new Error(data.message || 'Failed to update status')
+      }
+    })
+    .catch((error) => {
+      console.error('Error updating appointment status:', error)
+      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+    })
+}
+
+// Open appointment details modal (Adapt from dentist.js or create new)
+function openAppointmentModal(appointmentId) {
+  const modal = document.getElementById('appointment-modal')
+  const detailsContainer = document.getElementById('appointment-details')
+  const confirmBtn = document.getElementById('confirm-appointment')
+  const completeBtn = document.getElementById('complete-appointment')
+  const cancelBtn = document.getElementById('cancel-appointment')
+
+  if (!modal || !detailsContainer) {
+    console.error('Appointment modal elements not found')
+    return
+  }
+
+  // Fetch appointment details
+  fetch(`http://localhost:3000/api/appointments/${appointmentId}`)
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        const apt = data.appointment
+        detailsContainer.innerHTML = `
+          <div class="detail-item">
+            <div class="detail-label">Patient:</div>
+            <div class="detail-value">${apt.userName || 'N/A'}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Service:</div>
+            <div class="detail-value">${apt.service}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Date:</div>
+            <div class="detail-value">${new Date(
+              apt.date
+            ).toLocaleDateString()}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Time:</div>
+            <div class="detail-value">${apt.time}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Dentist:</div>
+            <div class="detail-value">${apt.dentist || 'N/A'}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Status:</div>
+            <div class="detail-value"><span class="appointment-status status-${
+              apt.status
+            }">${apt.status}</span></div>
+          </div>
+          ${
+            apt.notes
+              ? `
+          <div class="detail-item">
+            <div class="detail-label">Notes:</div>
+            <div class="detail-value">${apt.notes}</div>
+          </div>`
+              : ''
+          }
+          ${
+            apt.transfer_status
+              ? `
+          <div class="detail-item">
+            <div class="detail-label">Transfer Status:</div>
+            <div class="detail-value">${apt.transfer_status} ${
+                  apt.original_dentist
+                    ? `(Original: ${apt.original_dentist})`
+                    : ''
+                }</div>
+          </div>`
+              : ''
+          }
+        `
+
+        modal.dataset.appointmentId = appointmentId
+
+        if (confirmBtn)
+          confirmBtn.style.display =
+            apt.status === 'pending' ? 'inline-block' : 'none'
+        if (completeBtn)
+          completeBtn.style.display =
+            apt.status === 'confirmed' ? 'inline-block' : 'none'
+        if (cancelBtn)
+          cancelBtn.style.display =
+            apt.status !== 'cancelled' && apt.status !== 'completed'
+              ? 'inline-block'
+              : 'none'
+
+        confirmBtn?.removeEventListener('click', handleModalConfirm)
+        confirmBtn?.addEventListener('click', handleModalConfirm)
+
+        completeBtn?.removeEventListener('click', handleModalComplete)
+        completeBtn?.addEventListener('click', handleModalComplete)
+
+        cancelBtn?.removeEventListener('click', handleModalCancel)
+        cancelBtn?.addEventListener('click', handleModalCancel)
+
+        modal.style.display = 'block'
+      } else {
+        throw new Error(data.message || 'Failed to load appointment details')
+      }
+    })
+    .catch((error) => {
+      console.error('Error opening appointment modal:', error)
+      showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
+    })
+}
+
+// Modal action handlers
+function handleModalConfirm() {
+  const appointmentId =
+    document.getElementById('appointment-modal')?.dataset.appointmentId
+  if (appointmentId) {
+    showConfirmDialog('Confirm this appointment?', () =>
+      updateAppointmentStatus(appointmentId, 'confirmed')
+    )
+  }
+}
+function handleModalComplete() {
+  const appointmentId =
+    document.getElementById('appointment-modal')?.dataset.appointmentId
+  if (appointmentId) {
+    showConfirmDialog('Mark this appointment as completed?', () =>
+      updateAppointmentStatus(appointmentId, 'completed')
+    )
+  }
+}
+function handleModalCancel() {
+  const appointmentId =
+    document.getElementById('appointment-modal')?.dataset.appointmentId
+  if (appointmentId) {
+    showConfirmDialog('Cancel this appointment?', () =>
+      updateAppointmentStatus(appointmentId, 'cancelled')
+    )
+  }
+}
+
+// Close any open modal
+function closeModal(e) {
+  if (e && e.target) {
+    const modal = e.target.closest('.modal')
+    if (modal) {
+      modal.style.display = 'none'
+    }
+  } else {
+    document.querySelectorAll('.modal').forEach((modal) => {
+      modal.style.display = 'none'
+    })
   }
 }

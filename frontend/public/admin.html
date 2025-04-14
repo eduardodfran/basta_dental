@@ -71,6 +71,9 @@
           <button class="tab-btn" data-tab="analytics">
             <i class="fas fa-chart-bar"></i> Analytics
           </button>
+          <button class="tab-btn" data-tab="transferable-appointments">
+            <i class="fas fa-exchange-alt"></i> Transferable Appointments
+          </button>
           <button class="tab-btn" data-tab="clinic-availability">
             <i class="fas fa-store-slash"></i> Clinic Availability
           </button>
@@ -230,6 +233,49 @@
                   <i class="fas fa-chart-bar"></i>
                   <p>Chart data will appear here</p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transferable Appointments Tab -->
+          <div class="tab-pane" id="transferable-appointments-tab">
+            <div class="tab-header">
+              <h2>Manage Transferable Appointments</h2>
+              <div class="filters">
+                <select id="transfer-status-filter">
+                  <option value="all">All Status</option>
+                  <option value="available">Available for Transfer</option>
+                  <option value="accepted">Transfer Accepted</option>
+                  <option value="completed">Completed Transfer</option>
+                </select>
+                <input
+                  type="date"
+                  id="transfer-date-filter"
+                  placeholder="Filter by date"
+                />
+                <button id="clear-transfer-filters" class="btn btn-sm">
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+            <div class="appointments-list">
+              <table id="transferable-appointments-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Patient</th>
+                    <th>Service</th>
+                    <th>Date & Time</th>
+                    <th>Original Dentist</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="transferable-appointments-data">
+                  <!-- Transferable appointments will be loaded dynamically -->
+                </tbody>
+              </table>
+              <div id="no-transferable-appointments" class="no-data-message">
+                No transferable appointments found matching your criteria.
               </div>
             </div>
           </div>
@@ -447,8 +493,8 @@
           <div class="form-group">
             <button type="submit" class="btn btn-primary">Update Role</button>
             <button
-              type="button"
               id="cancel-role-change"
+              type="button"
               class="btn btn-secondary"
             >
               Cancel
@@ -465,7 +511,6 @@
     </footer>
     <!-- Scripts -->
     <script>
-      // Double-check authentication when DOM is fully loaded
       document.addEventListener('DOMContentLoaded', function () {
         if (!checkAdminAuth()) {
           // Stop all other script execution if not authenticated as admin
@@ -474,5 +519,6 @@
       })
     </script>
     <script src="js/admin.js"></script>
+    <script src="js/appointment-transfer.js"></script>
   </body>
 </html>

@@ -13,6 +13,9 @@ class Appointment {
     this.time = appointmentData.time
     this.status = appointmentData.status || 'pending'
     this.notes = appointmentData.notes || ''
+    // Assuming these columns exist in the DB schema
+    this.transferStatus = appointmentData.transferStatus || 'pending'
+    this.originalDentist = appointmentData.originalDentist || null
   }
 
   /**
@@ -22,9 +25,10 @@ class Appointment {
   async save() {
     try {
       const pool = getPool()
+      // Ensure transfer_status and original_dentist are included if they exist in the table
       const [result] = await pool.query(
-        `INSERT INTO appointments (user_id, service, dentist, date, time, status, notes) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO appointments (user_id, service, dentist, date, time, status, notes, transfer_status, original_dentist) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           this.userId,
           this.service,
@@ -33,6 +37,8 @@ class Appointment {
           this.time,
           this.status,
           this.notes,
+          this.transferStatus, // Add transfer status
+          this.originalDentist, // Add original dentist
         ]
       )
 
@@ -40,6 +46,29 @@ class Appointment {
       // Use the class name instead of this to call static method
       return Appointment.findById(this.id)
     } catch (error) {
+      // Handle potential errors if columns don't exist yet
+      if (error.code === 'ER_BAD_FIELD_ERROR') {
+        console.warn(
+          'Transfer columns (transfer_status, original_dentist) might be missing. Trying save without them.'
+        )
+        // Try saving without transfer columns
+        const pool = getPool()
+        const [result] = await pool.query(
+          `INSERT INTO appointments (user_id, service, dentist, date, time, status, notes) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            this.userId,
+            this.service,
+            this.dentist,
+            this.date,
+            this.time,
+            this.status,
+            this.notes,
+          ]
+        )
+        this.id = result.insertId
+        return Appointment.findById(this.id)
+      }
       console.error('Error saving appointment:', error)
       throw error
     }
@@ -53,8 +82,12 @@ class Appointment {
   static async findById(id) {
     try {
       const pool = getPool()
+      // Select all columns, including potential transfer columns
       const [rows] = await pool.query(
-        `SELECT * FROM appointments WHERE id = ?`,
+        `SELECT a.*, u.name as userName 
+         FROM appointments a
+         LEFT JOIN users u ON a.user_id = u.id
+         WHERE a.id = ?`,
         [id]
       )
       return rows.length > 0 ? rows[0] : null
@@ -215,30 +248,44 @@ class Appointment {
   }
 
   /**
-   * Assign appointment to a dentist
+   * Assign appointment to a dentist and update transfer status
    * @param {number} id - Appointment ID
    * @param {string} dentistName - Dentist name
    * @param {number} dentistId - Dentist user ID (optional)
+   * @param {string} transferStatus - New transfer status (e.g., 'accepted', 'pending')
    * @returns {Object} - Updated appointment
    */
-  static async assignToDentist(id, dentistName, dentistId = null) {
+  static async assignToDentist(
+    id,
+    dentistName,
+    dentistId = null,
+    transferStatus = 'accepted' // Default to 'accepted' when assigning
+  ) {
     try {
       const pool = getPool()
 
-      // Update appointment dentist
-      await pool.query('UPDATE appointments SET dentist = ? WHERE id = ?', [
-        dentistName,
-        id,
-      ])
-
-      // Get updated appointment
-      const [rows] = await pool.query(
-        'SELECT * FROM appointments WHERE id = ?',
-        [id]
+      // Update appointment dentist and transfer status
+      // Assuming transfer_status column exists
+      await pool.query(
+        'UPDATE appointments SET dentist = ?, transfer_status = ? WHERE id = ?',
+        [dentistName, transferStatus, id]
       )
 
-      return rows[0]
+      // Get updated appointment
+      return this.findById(id)
     } catch (error) {
+      // Handle potential errors if transfer_status column doesn't exist yet
+      if (error.code === 'ER_BAD_FIELD_ERROR') {
+        console.warn(
+          'Transfer_status column might be missing. Assigning dentist without updating transfer status.'
+        )
+        const pool = getPool()
+        await pool.query('UPDATE appointments SET dentist = ? WHERE id = ?', [
+          dentistName,
+          id,
+        ])
+        return this.findById(id)
+      }
       console.error('Error assigning appointment to dentist:', error)
       throw error
     }
@@ -251,6 +298,7 @@ class Appointment {
   static async findAll() {
     try {
       const pool = getPool()
+      // Include transfer_status and original_dentist if they exist
       const [appointments] = await pool.query(`
         SELECT a.*, u.name as userName 
         FROM appointments a
@@ -362,6 +410,83 @@ class Appointment {
       return this.findById(id)
     } catch (error) {
       console.error('Error updating payment method:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Mark an appointment as available for transfer
+   * @param {number} id - Appointment ID
+   * @param {string} originalDentist - Name of the dentist making it available
+   * @returns {Object} - Updated appointment
+   */
+  static async markAsTransferable(id, originalDentist) {
+    try {
+      const pool = getPool()
+
+      // Update appointment to make it available for transfer
+      await pool.query(
+        `UPDATE appointments 
+         SET transfer_status = 'available', original_dentist = ? 
+         WHERE id = ?`,
+        [originalDentist, id]
+      )
+
+      return this.findById(id)
+    } catch (error) {
+      console.error('Error marking appointment as transferable:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Find all appointments available for transfer
+   * @returns {Array} - Array of appointment objects
+   */
+  static async findTransferable() {
+    try {
+      const pool = getPool()
+
+      // Get all appointments marked as available for transfer
+      const [rows] = await pool.query(`
+        SELECT a.*, u.name as userName 
+        FROM appointments a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE a.transfer_status = 'available'
+        AND a.status != 'cancelled'
+        AND a.status != 'completed'
+        ORDER BY a.date ASC, a.time ASC
+      `)
+
+      return rows
+    } catch (error) {
+      console.error('Error finding transferable appointments:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Accept a transfer and assign appointment to a new dentist
+   * @param {number} id - Appointment ID
+   * @param {string} dentistName - New dentist name
+   * @param {number|null} dentistId - New dentist ID (optional)
+   * @returns {Object} - Updated appointment
+   */
+  static async acceptTransfer(id, dentistName, dentistId = null) {
+    try {
+      const pool = getPool()
+
+      // Update appointment with new dentist and mark transfer as accepted
+      await pool.query(
+        `UPDATE appointments 
+         SET dentist = ?, transfer_status = 'accepted' 
+         WHERE id = ?`,
+        [dentistName, id]
+      )
+
+      return this.findById(id)
+    } catch (error) {
+      console.error('Error accepting appointment transfer:', error)
       throw error
     }
   }

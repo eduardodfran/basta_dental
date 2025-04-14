@@ -326,6 +326,7 @@
             <i class="fas fa-save"></i> Save Notes
           </button>
           <button id="close-modal" class="btn btn-secondary">Close</button>
+          <!-- The transfer button will be dynamically added by JavaScript -->
         </div>
       </div>
     </div>
@@ -348,18 +349,17 @@
             showNotificationDialog(
               'Access denied. Dental professional access only.',
               'Access Denied',
-              () => window.location.replace('dashboard.html')
+              () => window.location.replace('login.html')
             )
-            return
           }
         } catch (e) {
-          localStorage.removeItem('user')
+          console.error('Authentication error:', e)
           window.location.replace('login.html')
-          return
         }
       })
     </script>
+    <!-- Load dentist.js which contains all core functionality -->
     <script src="js/dentist.js"></script>
-    <script src="js/dentist-auth.js"></script>
+    <!-- No need for separate appointment-transfer.js as this functionality is already in dentist.js -->
   </body>
 </html>

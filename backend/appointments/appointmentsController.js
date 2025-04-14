@@ -1,4 +1,8 @@
 import Appointment from './appointmentsModel.js'
+// Correct the path from 'users' to 'user'
+import User from '../user/userModel.js'
+// Correct the filename from 'dentistAvailabilityModel.js' to 'dentistModel.js'
+import DentistAvailability from '../dentist/dentistModel.js'
 
 /**
  * Create a new appointment
@@ -121,6 +125,8 @@ export const createAppointment = async (req, res) => {
       time,
       status: 'pending',
       notes: notes || '',
+      transferStatus: 'pending', // Initialize transfer status
+      originalDentist: null, // Initialize original dentist
     }
 
     const appointment = new Appointment(appointmentData)
@@ -514,11 +520,12 @@ export const assignAppointment = async (req, res) => {
       })
     }
 
-    // Update appointment with new dentist
+    // Update appointment with new dentist, mark transfer as 'accepted'
     const updatedAppointment = await Appointment.assignToDentist(
       appointmentId,
       dentistName,
-      dentistId
+      dentistId,
+      'accepted' // Explicitly set status when assigning/accepting
     )
 
     res.json({
@@ -614,5 +621,133 @@ export const updatePaymentStatus = async (req, res) => {
   } catch (error) {
     console.error('Update payment status error:', error)
     res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Get all appointments available for transfer
+ */
+export const getTransferableAppointments = async (req, res) => {
+  try {
+    const appointments = await Appointment.findTransferable()
+    res.json({
+      success: true,
+      appointments,
+    })
+  } catch (error) {
+    console.error('Get transferable appointments error:', error)
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error',
+    })
+  }
+}
+
+/**
+ * Mark an appointment as available for transfer
+ */
+export const markAppointmentTransferable = async (req, res) => {
+  try {
+    const appointmentId = req.params.id
+
+    // Get the current appointment details first
+    const appointment = await Appointment.findById(appointmentId)
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      })
+    }
+
+    // Check if appointment is already cancelled or completed
+    if (['cancelled', 'completed'].includes(appointment.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot transfer cancelled or completed appointments.',
+      })
+    }
+
+    // Store the current dentist as the original dentist
+    const originalDentist = appointment.dentist
+
+    // Mark the appointment as transferable
+    const updatedAppointment = await Appointment.markAsTransferable(
+      appointmentId,
+      originalDentist
+    )
+
+    res.json({
+      success: true,
+      message: 'Appointment marked as available for transfer',
+      appointment: updatedAppointment,
+    })
+  } catch (error) {
+    console.error('Mark appointment transferable error:', error)
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error',
+    })
+  }
+}
+
+/**
+ * Accept a transferable appointment (assign to new dentist)
+ */
+export const acceptAppointmentTransfer = async (req, res) => {
+  try {
+    const appointmentId = req.params.id
+    const { dentistName, dentistId } = req.body // New dentist details
+
+    if (!dentistName) {
+      return res.status(400).json({
+        success: false,
+        message: 'New dentist name is required',
+      })
+    }
+
+    // Check if appointment exists
+    const appointment = await Appointment.findById(appointmentId)
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      })
+    }
+
+    // Verify the appointment is available for transfer
+    if (appointment.transfer_status !== 'available') {
+      return res.status(400).json({
+        success: false,
+        message: 'Appointment is not available for transfer',
+      })
+    }
+
+    // Check if the accepting dentist is the same as the original dentist
+    if (appointment.original_dentist === dentistName) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Cannot accept an appointment you originally offered for transfer.',
+      })
+    }
+
+    // Accept the transfer and assign to the new dentist
+    const updatedAppointment = await Appointment.acceptTransfer(
+      appointmentId,
+      dentistName,
+      dentistId
+    )
+
+    res.json({
+      success: true,
+      message: 'Appointment transfer accepted successfully',
+      appointment: updatedAppointment,
+    })
+  } catch (error) {
+    console.error('Accept appointment transfer error:', error)
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error',
+    })
   }
 }

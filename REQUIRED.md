@@ -1,2 +1,3 @@
 - it should have light mode and dark mode
 - UI/UX is a priority, make sure it has an great and impressive ui with different colors
+- make sure there is no unused and redundant codes

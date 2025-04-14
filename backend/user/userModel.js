@@ -374,15 +374,27 @@ class User {
       const pool = getPool()
       const { specialization, bio } = data
 
+      console.log(`Updating dentist ${dentistId} with: `, {
+        specialization,
+        bio,
+      })
+
+      // Execute the update query
       await pool.query(
         'UPDATE dentists SET specialization = ?, bio = ? WHERE id = ?',
         [specialization, bio, dentistId]
       )
 
+      // Verify the update by fetching the updated record
       const [rows] = await pool.query('SELECT * FROM dentists WHERE id = ?', [
         dentistId,
       ])
 
+      if (rows.length === 0) {
+        throw new Error(`No dentist found with id ${dentistId} after update`)
+      }
+
+      console.log('Updated dentist record:', rows[0])
       return rows[0]
     } catch (error) {
       console.error('Error updating dentist profile:', error)

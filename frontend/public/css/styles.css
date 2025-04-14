@@ -71,3 +71,88 @@
   width: 100%;
   background-color: #1a73e8;
 }
+
+/* Transferable Appointments Styles */
+.transfer-badge {
+  display: inline-block;
+  margin-left: 5px;
+  color: var(--accent-color);
+  font-size: 0.9rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.status-available {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.status-accepted {
+  background-color: #28a745;
+  color: white;
+}
+
+.info-message {
+  background-color: rgba(var(--info-rgb), 0.1);
+  border-left: 3px solid var(--info-color);
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 4px;
+}
+
+.info-message i {
+  color: var(--info-color);
+  margin-right: 5px;
+}
+
+/* Modal Styles Enhancement */
+#assign-dentist-modal .modal-content {
+  max-width: 500px;
+}
+
+#assign-dentist-modal .form-group {
+  margin-top: 20px;
+}
+
+/* Transferable Tab Icon Animation */
+[data-tab='transferable'] i {
+  transition: transform 0.3s ease;
+}
+
+[data-tab='transferable']:hover i {
+  transform: rotate(180deg);
+}
+
+[data-tab='transferable'].active i {
+  transform: rotate(180deg);
+}
+
+/* Dark Mode Specific Styles for Transferable Appointments */
+.dark-mode .status-available {
+  background-color: #0f7a8a;
+}
+
+.dark-mode .status-accepted {
+  background-color: #1e7e34;
+}
+
+.dark-mode .info-message {
+  background-color: rgba(var(--info-rgb), 0.15);
+  border-color: rgba(var(--info-rgb), 0.6);
+}
+
+.dark-mode #transferable-appointments-table th,
+.dark-mode #transferable-appointments-table td {
+  border-color: var(--border-color-dark);
+}
