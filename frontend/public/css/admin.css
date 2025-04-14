@@ -453,6 +453,12 @@
   color: #444;
 }
 
+#actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  height: 100%;
+}
+
 /* Transferable appointments specific styles */
 #transferable-appointments-tab .appointment-status.status-available {
   background-color: #17a2b8;

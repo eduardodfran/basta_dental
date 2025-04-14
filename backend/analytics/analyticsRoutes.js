@@ -1,9 +1,11 @@
 import express from 'express'
-import { getAnalyticsData } from './analyticsController.js'
+// Correct the imported function name
+import { getAnalytics } from './analyticsController.js'
 
 const router = express.Router()
 
 // Routes
-router.get('/', getAnalyticsData)
+// Use the correct function name here
+router.get('/', getAnalytics)
 
 export default router

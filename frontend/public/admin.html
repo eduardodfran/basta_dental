@@ -14,6 +14,8 @@
     <script src="js/notifications.js"></script>
     <!-- Add auth.js before main script to protect the page -->
     <script src="js/auth.js"></script>
+    <!-- Add Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
       // Immediately redirect if not authenticated or not admin - runs before page loads
       const user = localStorage.getItem('user')
@@ -193,6 +195,33 @@
               </div>
               <div class="analytics-card">
                 <div class="analytics-icon">
+                  <i class="fas fa-users"></i>
+                </div>
+                <div class="analytics-data">
+                  <h3>Total Users</h3>
+                  <p id="total-users">Loading...</p>
+                </div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-icon">
+                  <i class="fas fa-user-md"></i>
+                </div>
+                <div class="analytics-data">
+                  <h3>Total Dentists</h3>
+                  <p id="total-dentists">Loading...</p>
+                </div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-icon">
+                  <i class="fas fa-check-double"></i>
+                </div>
+                <div class="analytics-data">
+                  <h3>Completed Appointments</h3>
+                  <p id="completed-appointments">Loading...</p>
+                </div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-icon">
                   <i class="fas fa-user-plus"></i>
                 </div>
                 <div class="analytics-data">
@@ -222,16 +251,14 @@
             <div class="charts-container">
               <div class="chart-wrapper">
                 <h3>Appointments by Service</h3>
-                <div id="services-chart" class="chart-placeholder">
-                  <i class="fas fa-chart-pie"></i>
-                  <p>Chart data will appear here</p>
+                <div id="services-chart-wrapper" class="chart-placeholder">
+                  <canvas id="services-chart"></canvas>
                 </div>
               </div>
               <div class="chart-wrapper">
                 <h3>Appointments by Day</h3>
-                <div id="days-chart" class="chart-placeholder">
-                  <i class="fas fa-chart-bar"></i>
-                  <p>Chart data will appear here</p>
+                <div id="days-chart-wrapper" class="chart-placeholder">
+                  <canvas id="days-chart"></canvas>
                 </div>
               </div>
             </div>

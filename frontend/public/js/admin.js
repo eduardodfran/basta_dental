@@ -95,6 +95,10 @@ function initTabs() {
   })
 }
 
+// Store chart instances globally to manage updates/destruction
+let servicesChartInstance = null
+let daysChartInstance = null
+
 // Load all users
 function loadUsers() {
   const tableBody = document.getElementById('users-data')
@@ -757,9 +761,208 @@ function showTemporaryClinicUnavailabilityStatus(message, type) {
 }
 
 // Load analytics data
-function loadAnalytics() {
-  console.log('loadAnalytics function called - needs implementation')
-  // Placeholder: Add logic to fetch and display analytics data
+function loadAnalytics(startDate = null, endDate = null) {
+  let url = 'http://localhost:3000/api/analytics'
+  const params = new URLSearchParams()
+  if (startDate) params.append('startDate', startDate)
+  if (endDate) params.append('endDate', endDate)
+  if (startDate || endDate) url += `?${params.toString()}`
+
+  // Clear previous chart instances if they exist
+  if (servicesChartInstance) servicesChartInstance.destroy()
+  if (daysChartInstance) daysChartInstance.destroy()
+
+  // Show loading state
+  document.getElementById('total-appointments').textContent = 'Loading...'
+  document.getElementById('total-users').textContent = 'Loading...'
+  document.getElementById('total-dentists').textContent = 'Loading...'
+  document.getElementById('completed-appointments').textContent = 'Loading...'
+  document.getElementById('new-users').textContent = 'Loading...' // Added
+  document.getElementById('completion-rate').textContent = 'Loading...' // Added
+  document.getElementById('cancellation-rate').textContent = 'Loading...' // Added
+  document.getElementById('services-chart-wrapper').innerHTML =
+    '<canvas id="services-chart"></canvas>' // Reset canvas container
+  document.getElementById('days-chart-wrapper').innerHTML =
+    '<canvas id="days-chart"></canvas>' // Reset canvas container
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to load analytics')
+      }
+
+      const analytics = data.analytics
+
+      // --- Update Cards ---
+      document.getElementById('total-appointments').textContent =
+        analytics.totalAppointments
+      document.getElementById('total-users').textContent = analytics.totalUsers
+      document.getElementById('total-dentists').textContent =
+        analytics.totalDentists
+      document.getElementById('completed-appointments').textContent =
+        analytics.appointmentsByStatus.completed || 0
+      document.getElementById('new-users').textContent = analytics.newPatients // Added
+
+      // Calculate rates
+      const totalRelevantAppointments =
+        analytics.totalAppointments -
+        (analytics.appointmentsByStatus.pending || 0) // Exclude pending from rate calculation base? Or include? Let's include all non-cancelled/completed for now.
+      // Let's base rate on all appointments in the period
+      const totalAppointmentsForRate = analytics.totalAppointments
+      const completedCount = analytics.appointmentsByStatus.completed || 0
+      const cancelledCount = analytics.appointmentsByStatus.cancelled || 0
+
+      let completionRate = 0
+      let cancellationRate = 0
+
+      if (totalAppointmentsForRate > 0) {
+        completionRate = (
+          (completedCount / totalAppointmentsForRate) *
+          100
+        ).toFixed(1)
+        cancellationRate = (
+          (cancelledCount / totalAppointmentsForRate) *
+          100
+        ).toFixed(1)
+      }
+
+      document.getElementById(
+        'completion-rate'
+      ).textContent = `${completionRate}%` // Added
+      document.getElementById(
+        'cancellation-rate'
+      ).textContent = `${cancellationRate}%` // Added
+
+      // --- Render Charts ---
+
+      // 1. Services Chart (Pie)
+      const servicesCtx = document
+        .getElementById('services-chart')
+        .getContext('2d')
+      const serviceLabels = analytics.appointmentsByService.map(
+        (s) => s.service
+      )
+      const serviceCounts = analytics.appointmentsByService.map((s) => s.count)
+
+      // Define a color palette
+      const serviceColors = [
+        '#FF6384',
+        '#36A2EB',
+        '#FFCE56',
+        '#4BC0C0',
+        '#9966FF',
+        '#FF9F40',
+        '#C9CBCF', // Add more colors if needed
+      ]
+
+      servicesChartInstance = new Chart(servicesCtx, {
+        type: 'pie',
+        data: {
+          labels: serviceLabels,
+          datasets: [
+            {
+              label: 'Appointments by Service',
+              data: serviceCounts,
+              backgroundColor: serviceColors.slice(0, serviceLabels.length), // Use defined colors
+              hoverOffset: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  let label = context.label || ''
+                  if (label) {
+                    label += ': '
+                  }
+                  if (context.parsed !== null) {
+                    label += context.parsed
+                  }
+                  return label
+                },
+              },
+            },
+          },
+        },
+      })
+
+      // 2. Days Chart (Bar)
+      const daysCtx = document.getElementById('days-chart').getContext('2d')
+      const dayLabels = [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+      ]
+      const dayCounts = analytics.appointmentsByDay
+
+      daysChartInstance = new Chart(daysCtx, {
+        type: 'bar',
+        data: {
+          labels: dayLabels,
+          datasets: [
+            {
+              label: 'Appointments by Day',
+              data: dayCounts,
+              backgroundColor: 'rgba(54, 162, 235, 0.6)', // Example color
+              borderColor: 'rgba(54, 162, 235, 1)',
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1, // Ensure y-axis shows whole numbers for counts
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              display: false, // Hide legend for bar chart if desired
+            },
+          },
+        },
+      })
+    })
+    .catch((error) => {
+      console.error('Error loading analytics:', error)
+      // Display error messages in the UI
+      document.getElementById('total-appointments').textContent = 'Error'
+      document.getElementById('total-users').textContent = 'Error'
+      document.getElementById('total-dentists').textContent = 'Error'
+      document.getElementById('completed-appointments').textContent = 'Error'
+      document.getElementById('new-users').textContent = 'Error' // Added
+      document.getElementById('completion-rate').textContent = 'Error' // Added
+      document.getElementById('cancellation-rate').textContent = 'Error' // Added
+
+      // Clear charts on error
+      if (servicesChartInstance) servicesChartInstance.destroy()
+      if (daysChartInstance) daysChartInstance.destroy()
+      const servicesWrapper = document.getElementById('services-chart-wrapper')
+      if (servicesWrapper) {
+        servicesWrapper.innerHTML = `<p style="color: red; text-align: center;">Error loading chart data.</p>`
+      }
+      const daysWrapper = document.getElementById('days-chart-wrapper')
+      if (daysWrapper) {
+        daysWrapper.innerHTML = `<p style="color: red; text-align: center;">Error loading chart data.</p>`
+      }
+    })
 }
 
 // Load all appointments
@@ -1537,6 +1740,16 @@ function setupEventListeners() {
           () => deleteTemporaryClinicUnavailability(unavailabilityId)
         )
       }
+    })
+  }
+
+  // Analytics Update Button
+  const updateAnalyticsBtn = document.getElementById('update-analytics')
+  if (updateAnalyticsBtn) {
+    updateAnalyticsBtn.addEventListener('click', () => {
+      const startDate = document.getElementById('analytics-start-date').value
+      const endDate = document.getElementById('analytics-end-date').value
+      loadAnalytics(startDate || null, endDate || null) // Pass null if empty
     })
   }
 }
