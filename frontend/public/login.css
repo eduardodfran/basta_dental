@@ -203,6 +203,38 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Add password visibility toggle button styles */
+.password-container {
+  position: relative;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #666;
+  padding: 5px;
+  transition: all 0.3s ease;
+}
+
+.toggle-password:hover {
+  color: #2a7db7;
+}
+
+.toggle-password:focus {
+  outline: none;
+}
+
+/* Add a bit more padding to password fields for the icon */
+.password-container input[type='password'],
+.password-container input[type='text'] {
+  padding-right: 40px;
+}
+
 /* Mobile Responsiveness */
 @media screen and (max-width: 480px) {
   .container {

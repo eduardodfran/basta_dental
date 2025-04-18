@@ -103,3 +103,11 @@ address text YES
 role enum('patient','admin','dentist') YES patient
 created_at timestamp YES CURRENT_TIMESTAMP DEFAULT_GENERATED
 updated_at timestamp YES CURRENT_TIMESTAMP DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+password_resets table:
+
+id int NO PRI auto_increment
+user_id int NO MUL
+token varchar(255) NO UNI
+expires_at timestamp NO
+created_at timestamp YES CURRENT_TIMESTAMP DEFAULT_GENERATED

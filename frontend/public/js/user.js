@@ -4,10 +4,15 @@ document.addEventListener('DOMContentLoaded', function () {
   const signupBtn = document.querySelector('.signup-btn')
   const loginForm = document.getElementById('login-form')
   const signupForm = document.getElementById('signup-form')
+  const forgotPasswordForm = document.getElementById('forgot-password-form')
+  const resetPasswordForm = document.getElementById('reset-password-form')
   const feedbackMessage = document.getElementById('feedback-message')
 
   // Define the backend API URL
   const API_URL = 'http://localhost:3000/api' // Base API URL
+
+  // Add toggle password visibility functionality
+  setupPasswordToggles()
 
   // Toggle between login and signup forms
   if (loginBtn && signupBtn) {
@@ -27,6 +32,32 @@ document.addEventListener('DOMContentLoaded', function () {
       loginBtn.style.color = '#333'
       signupForm.style.display = 'flex'
       loginForm.style.display = 'none'
+    })
+  }
+
+  // Function to setup password toggle visibility for all password fields
+  function setupPasswordToggles() {
+    // Find all password toggle buttons
+    const toggleButtons = document.querySelectorAll('.toggle-password')
+
+    toggleButtons.forEach((button) => {
+      button.addEventListener('click', function (e) {
+        e.preventDefault()
+
+        // Find the password input that this button toggles
+        const passwordInput = this.previousElementSibling
+
+        // Toggle between password and text type
+        if (passwordInput.type === 'password') {
+          passwordInput.type = 'text'
+          this.innerHTML = '<i class="fas fa-eye-slash"></i>'
+          this.setAttribute('title', 'Hide password')
+        } else {
+          passwordInput.type = 'password'
+          this.innerHTML = '<i class="fas fa-eye"></i>'
+          this.setAttribute('title', 'Show password')
+        }
+      })
     })
   }
 
@@ -97,7 +128,6 @@ document.addEventListener('DOMContentLoaded', function () {
       showFeedback('Logging in... Please wait.', 'info')
 
       fetch(`${API_URL}/users/login`, {
-        // Corrected URL: /api/users/login
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -188,7 +218,6 @@ document.addEventListener('DOMContentLoaded', function () {
       showFeedback('Creating your account... Please wait.', 'info')
 
       fetch(`${API_URL}/users/signup`, {
-        // Corrected URL: /api/users/signup
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -265,6 +294,120 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .finally(() => {
           // Reset loading state
+          setButtonLoading(submitButton, false)
+        })
+    })
+  }
+
+  // Handle Forgot Password form submission
+  if (forgotPasswordForm) {
+    forgotPasswordForm.addEventListener('submit', function (e) {
+      e.preventDefault()
+      const email = document.getElementById('forgot-email').value
+      const submitButton = forgotPasswordForm.querySelector(
+        'button[type="submit"]'
+      )
+
+      setButtonLoading(submitButton, true)
+      showFeedback('Sending reset link...', 'info')
+
+      fetch(`${API_URL}/users/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          showFeedback(data.message, data.success ? 'success' : 'error')
+          if (data.success) {
+            forgotPasswordForm.reset()
+          }
+        })
+        .catch((error) => {
+          console.error('Forgot Password Error:', error)
+          showFeedback('An error occurred. Please try again later.', 'error')
+        })
+        .finally(() => {
+          setButtonLoading(submitButton, false)
+        })
+    })
+  }
+
+  // Handle Reset Password form submission
+  if (resetPasswordForm) {
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    const tokenInput = document.getElementById('reset-token')
+
+    if (token && tokenInput) {
+      tokenInput.value = token
+    } else if (tokenInput) {
+      showFeedback(
+        'Invalid or missing password reset link. Please request a new one.',
+        'error'
+      )
+      resetPasswordForm
+        .querySelectorAll('input, button')
+        .forEach((el) => (el.disabled = true))
+    }
+
+    resetPasswordForm.addEventListener('submit', function (e) {
+      e.preventDefault()
+      const storedToken = document.getElementById('reset-token').value
+      const password = document.getElementById('reset-password').value
+      const confirmPassword = document.getElementById(
+        'reset-confirm-password'
+      ).value
+      const submitButton = resetPasswordForm.querySelector(
+        'button[type="submit"]'
+      )
+
+      if (!storedToken) {
+        showFeedback('Invalid reset request. No token found.', 'error')
+        return
+      }
+
+      if (password !== confirmPassword) {
+        showFeedback('Passwords do not match.', 'error')
+        return
+      }
+
+      if (password.length < 6) {
+        showFeedback('Password must be at least 6 characters long.', 'error')
+        return
+      }
+
+      setButtonLoading(submitButton, true)
+      showFeedback('Resetting password...', 'info')
+
+      fetch(`${API_URL}/users/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: storedToken, password, confirmPassword }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            showFeedback(
+              'Password reset successfully! Redirecting to login...',
+              'success'
+            )
+            resetPasswordForm.reset()
+            setTimeout(() => {
+              window.location.href = 'login.html'
+            }, 2500)
+          } else {
+            showFeedback(
+              data.message || 'Failed to reset password. Please try again.',
+              'error'
+            )
+          }
+        })
+        .catch((error) => {
+          console.error('Reset Password Error:', error)
+          showFeedback('An error occurred. Please try again later.', 'error')
+        })
+        .finally(() => {
           setButtonLoading(submitButton, false)
         })
     })

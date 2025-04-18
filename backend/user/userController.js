@@ -1,5 +1,7 @@
 import User from './userModel.js'
+import bcrypt from 'bcryptjs'
 import { validateUserData } from './userUtils.js'
+import mailService from '../contacts/contactsUtils.js' // Import mail service
 
 /**
  * Login user and return user data
@@ -339,5 +341,158 @@ export const updateDentistProfile = async (req, res) => {
       success: false,
       message: 'Server error updating dentist profile: ' + error.message,
     })
+  }
+}
+
+/**
+ * Handle forgot password request
+ */
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body
+
+    if (!email) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Email address is required' })
+    }
+
+    // Log that the process started
+    console.log(`📧 Processing password reset for: ${email}`)
+
+    const user = await User.findOne({ email })
+
+    if (!user) {
+      // Security: Don't reveal if email exists
+      console.log(`Password reset requested for non-existent email`)
+      return res.json({
+        success: true,
+        message:
+          'If an account with that email exists, a password reset link has been sent.',
+      })
+    }
+
+    console.log(`User found: ID ${user.id}`)
+
+    // Generate and store reset token
+    try {
+      const resetToken = await User.createPasswordResetToken(user.id)
+      console.log(
+        `Reset token generated successfully (${resetToken.length} chars)`
+      )
+
+      // Send email
+      try {
+        await mailService.sendPasswordResetEmail(
+          user.email,
+          resetToken,
+          user.name
+        )
+        console.log(`Password reset email sent successfully to: ${user.email}`)
+
+        return res.json({
+          success: true,
+          message:
+            'If an account with that email exists, a password reset link has been sent.',
+        })
+      } catch (emailError) {
+        console.error(
+          '❌ Failed to send password reset email:',
+          emailError.message
+        )
+
+        // Delete the token since email sending failed
+        try {
+          await User.deleteResetToken(resetToken)
+          console.log('Token deleted due to email failure')
+        } catch (deleteError) {
+          console.error(
+            'Error deleting token after email failure:',
+            deleteError.message
+          )
+        }
+
+        return res.status(500).json({
+          success: false,
+          message:
+            'Failed to send password reset email. Please try again later.',
+        })
+      }
+    } catch (tokenError) {
+      console.error(
+        '❌ Failed to create password reset token:',
+        tokenError.message
+      )
+      return res.status(500).json({
+        success: false,
+        message: 'Error processing password reset. Please try again later.',
+      })
+    }
+  } catch (error) {
+    console.error('❌ Forgot password error:', error.message)
+    res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+/**
+ * Handle reset password request
+ */
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password, confirmPassword } = req.body
+
+    if (!token || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token, password, and confirmation password are required',
+      })
+    }
+
+    if (password !== confirmPassword) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Passwords do not match' })
+    }
+
+    if (password.length < 6) {
+      // Add password complexity check if needed
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long',
+      })
+    }
+
+    // Find the token in the database
+    const resetRecord = await User.findResetToken(token)
+
+    if (!resetRecord) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired password reset token.',
+      })
+    }
+
+    // Update the user's password
+    const updateSuccess = await User.updatePassword(
+      resetRecord.user_id,
+      password
+    )
+
+    if (!updateSuccess) {
+      // This shouldn't happen if the user_id was valid, but handle it
+      return res
+        .status(500)
+        .json({ success: false, message: 'Failed to update password.' })
+    }
+
+    // Delete the used token
+    await User.deleteResetToken(token)
+
+    // Optionally send a confirmation email here
+
+    res.json({ success: true, message: 'Password reset successfully.' })
+  } catch (error) {
+    console.error('Reset password error:', error)
+    res.status(500).json({ success: false, message: 'Server error' })
   }
 }

@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt'
 import { getPool } from '../config/db.js'
+import crypto from 'crypto' // Import crypto for token generation
 
 class User {
   /**
@@ -457,6 +458,82 @@ class User {
       }
     } catch (error) {
       console.error('Error finding users by role:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Create a password reset token for a user
+   * @param {number} userId - The ID of the user
+   * @returns {string} - The generated reset token
+   */
+  static async createPasswordResetToken(userId) {
+    try {
+      const pool = getPool()
+      const token = crypto.randomBytes(32).toString('hex')
+      const expires = new Date(Date.now() + 3600000) // Token expires in 1 hour
+
+      await pool.query(
+        'INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)',
+        [userId, token, expires]
+      )
+      return token
+    } catch (error) {
+      console.error('Error creating password reset token:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Find a password reset token
+   * @param {string} token - The token to find
+   * @returns {Object|null} - The reset token record or null if not found/expired
+   */
+  static async findResetToken(token) {
+    try {
+      const pool = getPool()
+      const [rows] = await pool.query(
+        'SELECT * FROM password_resets WHERE token = ? AND expires_at > NOW()',
+        [token]
+      )
+      return rows.length > 0 ? rows[0] : null
+    } catch (error) {
+      console.error('Error finding password reset token:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Delete a password reset token
+   * @param {string} token - The token to delete
+   */
+  static async deleteResetToken(token) {
+    try {
+      const pool = getPool()
+      await pool.query('DELETE FROM password_resets WHERE token = ?', [token])
+    } catch (error) {
+      console.error('Error deleting password reset token:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update a user's password
+   * @param {number} userId - The ID of the user
+   * @param {string} newPassword - The new plain text password
+   * @returns {boolean} - True if update was successful
+   */
+  static async updatePassword(userId, newPassword) {
+    try {
+      const pool = getPool()
+      const hashedPassword = await bcrypt.hash(newPassword, 10)
+      const [result] = await pool.query(
+        'UPDATE users SET password = ? WHERE id = ?',
+        [hashedPassword, userId]
+      )
+      return result.affectedRows > 0
+    } catch (error) {
+      console.error('Error updating password:', error)
       throw error
     }
   }

@@ -8,6 +8,8 @@ import {
   updateUserRole,
   updateDentistProfile,
   getDentistProfile,
+  forgotPassword, // Import new controller
+  resetPassword, // Import new controller
 } from './userController.js'
 import { protect, admin } from '../middleware/authMiddleware.js'
 
@@ -21,6 +23,8 @@ router.get('/test', (req, res) => {
 // Public routes
 router.post('/login', loginUser)
 router.post('/signup', registerUser)
+router.post('/forgot-password', forgotPassword) // Add forgot password route
+router.post('/reset-password', resetPassword) // Add reset password route
 
 // Protected routes
 router.get('/profile/:id', protect, getUserProfile)

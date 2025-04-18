@@ -1,23 +1,52 @@
-import express from 'express'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+
+// --- Load Environment Variables FIRST ---
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const envPath = path.resolve(__dirname, '../.env')
+
+// Cleaner loading message
+console.log(`🔧 Loading configuration from ${envPath}`)
+const configResult = dotenv.config({ path: envPath })
+
+if (configResult.error) {
+  console.error('❌ Error loading .env file:', configResult.error)
+} else {
+  console.log('✅ Configuration loaded successfully')
+
+  // Simplify environment variable logging
+  const envVars = {
+    PORT: process.env.PORT || '3000',
+    DB_USER: process.env.DB_USER || 'Not Set',
+    MAIL_USER: process.env.MAIL_USER ? 'Set' : 'Not Set',
+    DB_PASSWORD: process.env.DB_PASSWORD
+      ? `Set (${process.env.DB_PASSWORD.length} chars)`
+      : 'Not Set',
+  }
+
+  console.table(envVars)
+
+  // Check if DB_PASSWORD is empty/whitespace
+  if (process.env.DB_PASSWORD?.trim() === '') {
+    console.warn('⚠️ WARNING: DB_PASSWORD is set but empty or whitespace only!')
+  }
+}
+// --- End Load Environment Variables ---
+
+import express from 'express'
 import contactsRoutes from './contacts/contactsRoutes.js'
 import userRoutes from './user/userRoutes.js'
 import appointmentRoutes from './appointments/appointmentsRoutes.js'
 import analyticsRoutes from './analytics/analyticsRoutes.js'
 import dentistRoutes from './dentist/dentistRoutes.js'
-import clinicRoutes from './clinic/clinicRoutes.js' // Add this line
+import clinicRoutes from './clinic/clinicRoutes.js'
 import connectDB from './config/db.js'
 import { initializeTables } from './config/initDB.js'
 import cors from 'cors'
 import { createAdminUser } from './config/seedAdmin.js'
 import initClinicTables from './config/initClinicTables.js' // Import the initialization function
-
-// Set up paths and environment variables
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 // Initialize Express app
 const app = express()
@@ -46,32 +75,89 @@ app.use('/api/analytics', analyticsRoutes)
 app.use('/api/dentist', dentistRoutes)
 app.use('/api/clinic', clinicRoutes) // Add this line
 
-// Serve the main HTML file
+// Serve the main HTML file for root path
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/public/index.html'))
 })
 
-// Initialize the database connection
-connectDB()
-  .then(async () => {
-    console.log('Database connection established')
+// Serve specific HTML files for these routes
+app.get('/reset-password', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/public/reset-password.html'))
+})
 
-    // Initialize clinic tables
-    try {
-      console.log('Initializing clinic tables...')
-      await initClinicTables()
-      console.log('Clinic tables initialized successfully')
-    } catch (error) {
-      console.error('Error initializing clinic tables:', error.message)
-      // Continue with server startup anyway
+app.get('/forgot-password', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/public/forgot-password.html'))
+})
+
+// Wildcard route to handle client-side routing
+app.get('*', (req, res) => {
+  // Exclude API routes and file extensions
+  if (!req.path.startsWith('/api/') && !path.extname(req.path)) {
+    res.sendFile(path.join(__dirname, '../frontend/public/index.html'))
+  } else {
+    res.status(404).send('Not found')
+  }
+})
+
+// --- Start Server Function ---
+async function startServer() {
+  try {
+    console.log('🏁 Starting BastaDental server...')
+
+    // Initialize Database Connection AFTER dotenv config
+    console.log('📊 Connecting to database...')
+    const pool = await connectDB()
+
+    if (pool) {
+      console.log('✅ Database connected successfully')
+    } else {
+      console.warn(
+        '⚠️ Database connection failed! Some features may not work properly'
+      )
     }
 
-    // Start the server
+    // Initialize clinic tables AFTER DB connection attempt
+    try {
+      console.log('📋 Initializing clinic tables...')
+      await initClinicTables() // This now uses the pool potentially initialized by connectDB
+      console.log('✅ Clinic tables ready')
+    } catch (error) {
+      console.error(
+        '❌ Error during clinic tables initialization:',
+        error.message
+      )
+    }
+
+    // Mail service transporter is initialized lazily on first use, no explicit call needed here.
+
+    // Start the server even if DB fails - it may still handle some requests
     app.listen(PORT, HOST, () => {
-      console.log(`Server running on http://${HOST}:${PORT}`)
+      console.log(`\n🚀 Server running at http://${HOST}:${PORT}\n`)
+
+      // Additional information after startup - cleaner format
+      console.log('📊 STATUS SUMMARY')
+      console.log('────────────────────────────────────')
+      console.log(`📁 Database:     ${pool ? '✓ Connected' : '✗ Failed'}`)
+      console.log(`📧 Email:        Will initialize on first request`)
+      console.log(`🌐 Server port:  ${PORT}`)
+      console.log('────────────────────────────────────')
     })
-  })
-  .catch((err) => {
-    console.error('Database connection failed:', err)
+  } catch (err) {
+    console.error('❌ Failed to start server:', err)
     process.exit(1)
-  })
+  }
+}
+
+// --- Run the Server Start ---
+startServer()
+
+// Optional: Add unhandled rejection/exception handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+  // Application specific logging, throwing an error, or other logic here
+})
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error)
+  // Application specific logging, shutdown, etc.
+  process.exit(1) // Mandatory shutdown after uncaught exception
+})
