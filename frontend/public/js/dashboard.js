@@ -571,7 +571,7 @@ function confirmCancelAppointment(appointmentId) {
           return
         }
 
-        // If cancellation is allowed, show confirmation
+        // If cancellation is allowed, show confirmation with Reschedule option
         showConfirmDialog(
           'Are you sure you want to cancel this appointment?<br><br>' +
             '<div class="downpayment-notice">' +
@@ -579,7 +579,7 @@ function confirmCancelAppointment(appointmentId) {
             'Please note: Downpayment policies may apply to cancellations. Contact the clinic for refund information.' +
             '</div>',
           () => {
-            // Proceed with cancellation
+            // Proceed with cancellation (Confirm button clicked)
             fetch(
               `http://localhost:3000/api/appointments/${appointmentId}/cancel`,
               {
@@ -610,6 +610,17 @@ function confirmCancelAppointment(appointmentId) {
                 console.error('Error cancelling appointment:', error)
                 showToast(`Error: ${error.message}`, TOAST_LEVELS.ERROR)
               })
+          },
+          null, // onCancel callback (handled by default close)
+          'Yes, Cancel', // Confirm button text
+          'Keep Appointment', // Cancel button text
+          {
+            // Options for the third button
+            thirdButtonText: 'Reschedule Instead',
+            onThirdButtonClick: () => {
+              // Open the reschedule modal when the third button is clicked
+              openRescheduleModal(appointmentId)
+            },
           }
         )
       } catch (err) {

@@ -140,19 +140,26 @@ function showToast(message, level = TOAST_LEVELS.INFO, duration = 3000) {
 
 /**
  * Show a confirmation dialog
- * @param {string} message - The message to display
+ * @param {string} message - The message to display (can be HTML)
  * @param {Function} onConfirm - Callback function when confirmed
- * @param {Function} onCancel - Callback function when canceled
- * @param {string} confirmText - Text for the confirm button
- * @param {string} cancelText - Text for the cancel button
+ * @param {Function} [onCancel=null] - Callback function when canceled
+ * @param {string} [confirmText='Confirm'] - Text for the confirm button
+ * @param {string} [cancelText='Cancel'] - Text for the cancel button
+ * @param {object} [options={}] - Additional options
+ * @param {string} [options.thirdButtonText=null] - Text for an optional third button
+ * @param {Function} [options.onThirdButtonClick=null] - Callback for the third button
  */
 function showConfirmDialog(
   message,
   onConfirm,
   onCancel = null,
   confirmText = 'Confirm',
-  cancelText = 'Cancel'
+  cancelText = 'Cancel',
+  options = {} // Added options object
 ) {
+  // Destructure options
+  const { thirdButtonText = null, onThirdButtonClick = null } = options
+
   // Create modal backdrop
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
@@ -168,66 +175,78 @@ function showConfirmDialog(
   backdrop.style.alignItems = 'center'
 
   // Create modal dialog
-  const dialog = document.createElement('div')
-  dialog.className = 'confirm-dialog'
-  dialog.style.backgroundColor = 'white'
-  dialog.style.borderRadius = '8px'
-  dialog.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)'
-  dialog.style.padding = '20px'
-  dialog.style.maxWidth = '400px'
-  dialog.style.width = '90%'
-  dialog.style.animation = 'fadeIn 0.3s ease'
+  const modalDialog = document.createElement('div')
+  modalDialog.className = 'confirm-dialog'
+  modalDialog.style.backgroundColor = '#fff'
+  modalDialog.style.padding = '30px'
+  modalDialog.style.borderRadius = '8px'
+  modalDialog.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)'
+  modalDialog.style.maxWidth = '450px'
+  modalDialog.style.width = '90%'
+  modalDialog.style.textAlign = 'center'
+  modalDialog.style.zIndex = '1051'
 
   // Message
-  const messageEl = document.createElement('div')
-  messageEl.innerHTML = message
-  messageEl.style.marginBottom = '20px'
+  const messageElement = document.createElement('div')
+  messageElement.innerHTML = message // Use innerHTML to allow HTML content
+  messageElement.style.marginBottom = '20px'
+  messageElement.style.fontSize = '1.1rem'
+  messageElement.style.lineHeight = '1.5'
 
   // Button container
-  const btnContainer = document.createElement('div')
-  btnContainer.style.display = 'flex'
-  btnContainer.style.justifyContent = 'flex-end'
-  btnContainer.style.gap = '10px'
-
-  // Cancel button
-  const cancelBtn = document.createElement('button')
-  cancelBtn.textContent = cancelText
-  cancelBtn.className = 'btn btn-secondary'
-  cancelBtn.style.padding = '8px 16px'
-  cancelBtn.style.border = 'none'
-  cancelBtn.style.borderRadius = '4px'
-  cancelBtn.style.cursor = 'pointer'
-  cancelBtn.onclick = () => {
-    document.body.removeChild(backdrop)
-    if (onCancel) onCancel()
-  }
+  const buttonContainer = document.createElement('div')
+  buttonContainer.style.marginTop = '25px'
+  buttonContainer.style.display = 'flex'
+  buttonContainer.style.justifyContent = 'center'
+  buttonContainer.style.gap = '10px'
 
   // Confirm button
-  const confirmBtn = document.createElement('button')
-  confirmBtn.textContent = confirmText
-  confirmBtn.className = 'btn btn-primary'
-  confirmBtn.style.padding = '8px 16px'
-  confirmBtn.style.border = 'none'
-  confirmBtn.style.borderRadius = '4px'
-  confirmBtn.style.cursor = 'pointer'
-  confirmBtn.onclick = () => {
-    document.body.removeChild(backdrop)
+  const confirmButton = document.createElement('button')
+  confirmButton.textContent = confirmText
+  confirmButton.className = 'btn btn-primary' // Use existing button styles
+  confirmButton.style.minWidth = '100px'
+  confirmButton.onclick = () => {
+    backdrop.remove()
     if (onConfirm) onConfirm()
   }
 
-  // Append buttons
-  btnContainer.appendChild(cancelBtn)
-  btnContainer.appendChild(confirmBtn)
+  // Cancel button
+  const cancelButton = document.createElement('button')
+  cancelButton.textContent = cancelText
+  cancelButton.className = 'btn btn-secondary' // Use existing button styles
+  cancelButton.style.minWidth = '100px'
+  cancelButton.onclick = () => {
+    backdrop.remove()
+    if (onCancel) onCancel()
+  }
 
-  // Append elements to dialog
-  dialog.appendChild(messageEl)
-  dialog.appendChild(btnContainer)
+  // Optional Third Button
+  let thirdButton = null
+  if (thirdButtonText && onThirdButtonClick) {
+    thirdButton = document.createElement('button')
+    thirdButton.textContent = thirdButtonText
+    thirdButton.className = 'btn btn-info' // Or another appropriate style
+    thirdButton.style.minWidth = '100px'
+    thirdButton.onclick = () => {
+      backdrop.remove()
+      onThirdButtonClick()
+    }
+  }
 
-  // Append dialog to backdrop
-  backdrop.appendChild(dialog)
-
-  // Add to body
+  // Append elements
+  buttonContainer.appendChild(cancelButton)
+  // Add third button between cancel and confirm if it exists
+  if (thirdButton) {
+    buttonContainer.appendChild(thirdButton)
+  }
+  buttonContainer.appendChild(confirmButton)
+  modalDialog.appendChild(messageElement)
+  modalDialog.appendChild(buttonContainer)
+  backdrop.appendChild(modalDialog)
   document.body.appendChild(backdrop)
+
+  // Focus the confirm button by default
+  confirmButton.focus()
 }
 
 /**
