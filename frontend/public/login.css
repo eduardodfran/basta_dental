@@ -106,7 +106,8 @@ textarea:focus {
 }
 
 .btn:hover {
-  background-color: #1a5f8b;
+  /* background-color: #1a5f8b; */
+  background-color: blue;
   box-shadow: 0 4px 10px rgba(42, 125, 183, 0.3);
 }
 
