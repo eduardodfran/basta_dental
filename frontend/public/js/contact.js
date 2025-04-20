@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   const contactForm = document.getElementById('contact-form')
   const formStatus = document.getElementById('form-status')
+  const API_BASE_URL = 'http://localhost:3000/api' // Define base URL for backend
 
   if (contactForm) {
     contactForm.addEventListener('submit', async function (e) {
@@ -27,7 +28,8 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       try {
-        const response = await fetch('/api/contacts/submit', {
+        const response = await fetch(`${API_BASE_URL}/contacts/submit`, {
+          // Use absolute URL
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -35,7 +37,23 @@ document.addEventListener('DOMContentLoaded', function () {
           body: JSON.stringify(formData),
         })
 
-        const result = await response.json()
+        // Check if the response is OK *before* trying to parse JSON
+        if (!response.ok) {
+          // Attempt to get error details, but handle cases where it's not JSON
+          let errorData = { message: `HTTP error! status: ${response.status}` }
+          try {
+            errorData = await response.json()
+          } catch (jsonError) {
+            console.warn('Could not parse error response as JSON:', jsonError)
+            // Use the status text if available, otherwise the generic message
+            errorData.message = response.statusText || errorData.message
+          }
+          throw new Error(
+            errorData.message || `HTTP error! status: ${response.status}`
+          )
+        }
+
+        const result = await response.json() // Now safe to parse
 
         if (response.ok) {
           // Success message
@@ -76,11 +94,12 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
       } catch (error) {
-        // Network error
+        // Network error or error thrown from !response.ok block
         console.error('Form submission error:', error)
         if (formStatus) {
           formStatus.innerHTML =
-            '<i class="fas fa-wifi"></i> Unable to connect to the server. Please try again later.'
+            '<i class="fas fa-exclamation-triangle"></i> ' +
+            (error.message || 'Unable to send message. Please try again later.')
           formStatus.className = 'form-status error-message'
         }
       } finally {
