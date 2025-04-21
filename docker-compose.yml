@@ -1,8 +1,8 @@
-version: '3.8'
-
 services:
   app:
-    build: ./backend # Path to Dockerfile
+    build:
+      context: . # Use the project root as the build context
+      dockerfile: backend/Dockerfile # Specify the path to the Dockerfile
     container_name: bastadental_app
     env_file:
       - .env # Load environment variables from .env file
