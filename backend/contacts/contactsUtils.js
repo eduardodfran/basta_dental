@@ -419,7 +419,7 @@ This email was sent from the DentalCare website contact form.
           .header h1 { margin: 0; font-size: 22px; }
           .content { padding: 10px 0; }
           p { margin-bottom: 15px; }
-          .button { display: inline-block; background-color: #2a7db7; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; text-align: center; }
+          .button { display: inline-block; background-color: #2a7db7; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; text-align: center; }
           .button:hover { background-color: #216ca3; }
           .link-container { text-align: center; margin: 25px 0; }
           .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; color: #777; font-size: 12px; }
