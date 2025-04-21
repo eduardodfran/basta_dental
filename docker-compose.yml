@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: bastadental_app
+    env_file:
+      - .env # Load environment variables from .env file
+    ports:
+      - '3000:3000' # Map host port 3000 to container port 3000
+    depends_on:
+      - db
+    environment:
+      # Ensure the app connects to the db service hostname
+      DB_HOST: db
+      # Add any other necessary environment variables that might not be in .env
+      # or need overriding for the container environment
+      NODE_ENV: production
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: bastadental_db
+    env_file:
+      - .env # Load environment variables from .env file
+    environment:
+      # These should match variables in your .env file
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD} # Or use root password directly if needed
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      # Optionally expose MySQL port to host (e.g., for debugging)
+      - '3307:3306' # Map host port 3307 to container port 3306 to avoid conflicts
+    volumes:
+      - db_data:/var/lib/mysql # Persist database data
+    restart: always
+
+volumes:
+  db_data: # Define the named volume for persistence
+
