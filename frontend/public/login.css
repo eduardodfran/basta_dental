@@ -12,7 +12,7 @@ body {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #f4f4f4;
+  background-color: #333;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
 }
 
