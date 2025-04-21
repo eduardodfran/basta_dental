@@ -13,10 +13,7 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 # Copy backend application code
-COPY ./backend ./backend
-
-# Copy frontend static files (served by the backend)
-COPY ./frontend/public ./frontend/public
+COPY . .
 
 # Copy .env file - Alternatively, manage env vars via docker-compose
 # COPY .env .env
@@ -26,5 +23,5 @@ EXPOSE 3000
 
 # Define the command to run your app using node
 # This assumes your entry point is backend/server.js
-CMD [ "node", "backend/server.js" ]
+CMD [ "node", "server.js" ]
 

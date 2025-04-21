@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build: ./backend # Path to Dockerfile
     container_name: bastadental_app
     env_file:
       - .env # Load environment variables from .env file
