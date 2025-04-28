@@ -1684,23 +1684,29 @@ function setupEventListeners(userId) {
 
       const item = target.closest('.unavailability-item')
       const dayId = item.dataset.dayId
+      const dayName =
+        item.querySelector('.permanent-day')?.textContent || 'this day'
 
-      if (confirm('Delete this permanently unavailable day?')) {
-        deletePermanentUnavailability(userId, dayId)
-          .then(() => {
-            showPermanentUnavailabilityStatus(
-              'Permanent unavailability deleted successfully!',
-              'success'
-            )
-            loadPermanentUnavailableDays(userId)
-          })
-          .catch((error) => {
-            showPermanentUnavailabilityStatus(
-              'Error: ' + error.message,
-              'error'
-            )
-          })
-      }
+      // Use confirmation modal instead of alert
+      showConfirmDialog(
+        `Are you sure you want to remove <strong>${dayName}</strong> from your permanently unavailable days?`,
+        () => {
+          deletePermanentUnavailability(userId, dayId)
+            .then(() => {
+              showPermanentUnavailabilityStatus(
+                'Permanent unavailability deleted successfully!',
+                'success'
+              )
+              loadPermanentUnavailableDays(userId)
+            })
+            .catch((error) => {
+              showPermanentUnavailabilityStatus(
+                'Error: ' + error.message,
+                'error'
+              )
+            })
+        }
+      )
     })
 
   // Delete temporary unavailability (delegation)
@@ -1716,23 +1722,29 @@ function setupEventListeners(userId) {
 
       const item = target.closest('.unavailability-item')
       const unavailabilityId = item.dataset.unavailabilityId
+      const dateRange =
+        item.querySelector('.date-range')?.textContent || 'this period'
 
-      if (confirm('Delete this temporary unavailability period?')) {
-        deleteTemporaryUnavailability(userId, unavailabilityId)
-          .then(() => {
-            showTemporaryUnavailabilityStatus(
-              'Temporary unavailability deleted successfully!',
-              'success'
-            )
-            loadTemporaryUnavailableDays(userId)
-          })
-          .catch((error) => {
-            showTemporaryUnavailabilityStatus(
-              'Error: ' + error.message,
-              'error'
-            )
-          })
-      }
+      // Use confirmation modal instead of alert
+      showConfirmDialog(
+        `Are you sure you want to delete the temporary unavailability for <strong>${dateRange}</strong>?`,
+        () => {
+          deleteTemporaryUnavailability(userId, unavailabilityId)
+            .then(() => {
+              showTemporaryUnavailabilityStatus(
+                'Temporary unavailability deleted successfully!',
+                'success'
+              )
+              loadTemporaryUnavailableDays(userId)
+            })
+            .catch((error) => {
+              showTemporaryUnavailabilityStatus(
+                'Error: ' + error.message,
+                'error'
+              )
+            })
+        }
+      )
     })
 
   // Dentist profile form submission

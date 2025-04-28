@@ -18,7 +18,7 @@ if (configResult.error) {
 
   // Simplify environment variable logging
   const envVars = {
-    PORT: process.env.PORT || '3000',
+    PORT: process.env.PORT || '3050',
     DB_USER: process.env.DB_USER || 'Not Set',
     MAIL_USER: process.env.MAIL_USER ? 'Set' : 'Not Set',
     DB_PASSWORD: process.env.DB_PASSWORD
@@ -131,7 +131,7 @@ async function startServer() {
     // Mail service transporter is initialized lazily on first use, no explicit call needed here.
 
     // Start the server even if DB fails - it may still handle some requests
-    app.listen(PORT, HOST, () => {
+    const server = app.listen(PORT, HOST, () => {
       console.log(`\n🚀 Server running at http://${HOST}:${PORT}\n`)
 
       // Additional information after startup - cleaner format
@@ -141,6 +141,31 @@ async function startServer() {
       console.log(`📧 Email:        Will initialize on first request`)
       console.log(`🌐 Server port:  ${PORT}`)
       console.log('────────────────────────────────────')
+    })
+
+    // Add specific error handling for the server instance
+    server.on('error', (error) => {
+      if (error.syscall !== 'listen') {
+        throw error
+      }
+
+      // Handle specific listen errors with friendly messages
+      switch (error.code) {
+        case 'EACCES':
+          console.error(`❌ Port ${PORT} requires elevated privileges`)
+          process.exit(1)
+          break
+        case 'EADDRINUSE':
+          console.error(`❌ Port ${PORT} is already in use.`)
+          console.error(`💡 Is another instance of the server running?`)
+          console.error(
+            `💡 You might need to find and stop the process using port ${PORT}.`
+          )
+          process.exit(1)
+          break
+        default:
+          throw error
+      }
     })
   } catch (err) {
     console.error('❌ Failed to start server:', err)
