@@ -7,8 +7,9 @@ document.addEventListener('DOMContentLoaded', function () {
     contactForm.addEventListener('submit', async function (e) {
       e.preventDefault()
 
-      // Show loading state
+      // Animate button during submission
       const submitButton = contactForm.querySelector('button[type="submit"]')
+      const originalButtonText = submitButton.innerHTML
       submitButton.disabled = true
       submitButton.innerHTML =
         '<i class="fas fa-spinner fa-spin"></i> Sending...'
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
         email: document.getElementById('email').value,
         phone: document.getElementById('phone').value,
         message: document.getElementById('message').value,
+        timestamp: new Date().toISOString(),
       }
 
       try {
@@ -80,10 +82,38 @@ document.addEventListener('DOMContentLoaded', function () {
           if (formStatus) {
             formStatus.innerHTML = message
             formStatus.className = 'form-status success-message'
+            formStatus.style.opacity = '0'
+            formStatus.style.display = 'block'
+
+            // Animate the message appearance
+            setTimeout(() => {
+              formStatus.style.transition = 'opacity 0.5s ease'
+              formStatus.style.opacity = '1'
+            }, 100)
+
+            // Fade out the success message after some time
+            setTimeout(() => {
+              formStatus.style.opacity = '0'
+              setTimeout(() => {
+                formStatus.style.display = 'none'
+              }, 500)
+            }, 8000)
           }
 
           // Reset the form on success
           contactForm.reset()
+
+          // For demo purposes, show a preview link
+          const previewDiv = document.createElement('div')
+          previewDiv.className = 'preview-link'
+          previewDiv.innerHTML = `<p>Demo mode: Your message was not actually sent.</p>
+                                      <p>Name: ${formData.name}<br>
+                                      Email: ${formData.email}<br>
+                                      Phone: ${
+                                        formData.phone || 'Not provided'
+                                      }<br>
+                                      Message: ${formData.message}</p>`
+          formStatus.appendChild(previewDiv)
         } else {
           // Error message
           if (formStatus) {
@@ -91,6 +121,13 @@ document.addEventListener('DOMContentLoaded', function () {
               '<i class="fas fa-exclamation-triangle"></i> ' +
               (result.message || 'Something went wrong. Please try again.')
             formStatus.className = 'form-status error-message'
+            formStatus.style.opacity = '0'
+            formStatus.style.display = 'block'
+
+            setTimeout(() => {
+              formStatus.style.transition = 'opacity 0.5s ease'
+              formStatus.style.opacity = '1'
+            }, 100)
           }
         }
       } catch (error) {
@@ -101,12 +138,18 @@ document.addEventListener('DOMContentLoaded', function () {
             '<i class="fas fa-exclamation-triangle"></i> ' +
             (error.message || 'Unable to send message. Please try again later.')
           formStatus.className = 'form-status error-message'
+          formStatus.style.opacity = '0'
+          formStatus.style.display = 'block'
+
+          setTimeout(() => {
+            formStatus.style.transition = 'opacity 0.5s ease'
+            formStatus.style.opacity = '1'
+          }, 100)
         }
       } finally {
         // Reset button
         submitButton.disabled = false
-        submitButton.innerHTML =
-          '<i class="fas fa-paper-plane"></i> Send Message'
+        submitButton.innerHTML = originalButtonText
       }
     })
   }

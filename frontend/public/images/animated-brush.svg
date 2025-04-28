@@ -1,0 +1,81 @@
+<!-- filepath: c:\Users\Wakin\basta_dental\frontend\public\images\animated-brush.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style>
+    .brush-handle {
+      fill: #2a7db7;
+    }
+    .brush-head {
+      fill: white;
+      stroke: #2a7db7;
+      stroke-width: 8;
+    }
+    .bristles {
+      fill: white;
+      stroke: #cccccc;
+      stroke-width: 2;
+    }
+    .toothpaste {
+      fill: #66ccff;
+    }
+    .bubble {
+      fill: white;
+      opacity: 0.7;
+    }
+    @keyframes move-bristles {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(0.9); }
+    }
+    .animated-bristles {
+      transform-origin: top;
+      animation: move-bristles 1s ease-in-out infinite;
+    }
+    @keyframes float-bubble {
+      0% { 
+        transform: translate(0, 0);
+        opacity: 0;
+      }
+      50% { opacity: 0.7; }
+      100% { 
+        transform: translate(20px, -30px);
+        opacity: 0;
+      }
+    }
+    .bubble-1 {
+      animation: float-bubble 3s infinite;
+      animation-delay: 0s;
+    }
+    .bubble-2 {
+      animation: float-bubble 3s infinite;
+      animation-delay: 0.5s;
+    }
+    .bubble-3 {
+      animation: float-bubble 3s infinite;
+      animation-delay: 1s;
+    }
+  </style>
+  
+  <g transform="rotate(45, 256, 256)">
+    <!-- Toothbrush handle -->
+    <rect class="brush-handle" x="100" y="256" width="250" height="30" rx="15" />
+    
+    <!-- Toothbrush head -->
+    <rect class="brush-head" x="350" y="236" width="80" height="70" rx="10" />
+    
+    <!-- Bristles -->
+    <g class="animated-bristles">
+      <rect class="bristles" x="360" y="186" width="5" height="50" rx="2" />
+      <rect class="bristles" x="375" y="186" width="5" height="50" rx="2" />
+      <rect class="bristles" x="390" y="186" width="5" height="50" rx="2" />
+      <rect class="bristles" x="405" y="186" width="5" height="50" rx="2" />
+      <rect class="bristles" x="420" y="186" width="5" height="50" rx="2" />
+    </g>
+    
+    <!-- Toothpaste -->
+    <path class="toothpaste" d="M360,236 Q390,216 420,236" />
+    
+    <!-- Bubbles -->
+    <circle class="bubble bubble-1" cx="370" cy="200" r="8" />
+    <circle class="bubble bubble-2" cx="390" cy="190" r="6" />
+    <circle class="bubble bubble-3" cx="410" cy="200" r="5" />
+  </g>
+</svg>

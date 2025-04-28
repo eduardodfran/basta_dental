@@ -1,0 +1,49 @@
+<!-- filepath: c:\Users\Wakin\basta_dental\frontend\public\images\cosmetic-dentistry.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style>
+    .smile {
+      fill: none;
+      stroke: #2a7db7;
+      stroke-width: 12;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tooth {
+      fill: white;
+      stroke: #2a7db7;
+      stroke-width: 8;
+    }
+    .sparkle {
+      fill: #2a7db7;
+    }
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .rotating {
+      transform-origin: center;
+      animation: rotate 10s linear infinite;
+    }
+    @keyframes flash {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 1; }
+    }
+    .flashing {
+      animation: flash 2s ease-in-out infinite;
+    }
+  </style>
+  
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#2a7db7" stroke-width="8" />
+  
+  <path class="smile" d="M186,246 Q256,326 326,246" />
+  
+  <g class="teeth">
+    <rect class="tooth" x="226" y="276" width="20" height="30" rx="4" />
+    <rect class="tooth" x="266" y="276" width="20" height="30" rx="4" />
+  </g>
+  
+  <g class="rotating">
+    <circle class="sparkle flashing" cx="180" cy="180" r="8" />
+    <circle class="sparkle flashing" cx="332" cy="180" r="8" />
+  </g>
+</svg>

@@ -1,0 +1,71 @@
+<!-- filepath: c:\Users\Wakin\basta_dental\frontend\public\images\orthodontics.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style>
+    .braces {
+      fill: none;
+      stroke: #2a7db7;
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tooth {
+      fill: white;
+      stroke: #2a7db7;
+      stroke-width: 5;
+    }
+    .wire {
+      fill: none;
+      stroke: #2a7db7;
+      stroke-width: 4;
+      stroke-dasharray: 5, 3;
+    }
+    @keyframes dashOffset {
+      to {
+        stroke-dashoffset: -20;
+      }
+    }
+    .animated-wire {
+      animation: dashOffset 1s linear infinite;
+    }
+    @keyframes straighten {
+      0% { transform: rotate(-5deg); }
+      50% { transform: rotate(5deg); }
+      100% { transform: rotate(-5deg); }
+    }
+    .straightening {
+      transform-origin: center;
+      animation: straighten 4s ease-in-out infinite;
+    }
+  </style>
+  
+  <g class="straightening">
+    <!-- Upper teeth -->
+    <rect class="tooth" x="180" y="180" width="30" height="40" rx="5" />
+    <rect class="tooth" x="220" y="180" width="30" height="40" rx="5" />
+    <rect class="tooth" x="260" y="180" width="30" height="40" rx="5" />
+    <rect class="tooth" x="300" y="180" width="30" height="40" rx="5" />
+    
+    <!-- Lower teeth -->
+    <rect class="tooth" x="180" y="280" width="30" height="40" rx="5" />
+    <rect class="tooth" x="220" y="280" width="30" height="40" rx="5" />
+    <rect class="tooth" x="260" y="280" width="30" height="40" rx="5" />
+    <rect class="tooth" x="300" y="280" width="30" height="40" rx="5" />
+  </g>
+  
+  <!-- Braces wires -->
+  <path class="wire animated-wire" d="M160,200 L350,200" />
+  <path class="wire animated-wire" d="M160,300 L350,300" />
+  
+  <!-- Brackets -->
+  <g class="braces">
+    <rect x="190" y="195" width="10" height="10" rx="2" />
+    <rect x="230" y="195" width="10" height="10" rx="2" />
+    <rect x="270" y="195" width="10" height="10" rx="2" />
+    <rect x="310" y="195" width="10" height="10" rx="2" />
+    
+    <rect x="190" y="295" width="10" height="10" rx="2" />
+    <rect x="230" y="295" width="10" height="10" rx="2" />
+    <rect x="270" y="295" width="10" height="10" rx="2" />
+    <rect x="310" y="295" width="10" height="10" rx="2" />
+  </g>
+</svg>

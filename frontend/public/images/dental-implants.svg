@@ -1,0 +1,59 @@
+<!-- filepath: c:\Users\Wakin\basta_dental\frontend\public\images\dental-implants.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style>
+    .implant {
+      fill: none;
+      stroke: #2a7db7;
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .crown {
+      fill: white;
+      stroke: #2a7db7;
+      stroke-width: 8;
+    }
+    .threads {
+      fill: none;
+      stroke: #2a7db7;
+      stroke-width: 5;
+      stroke-linecap: round;
+    }
+    .gum {
+      fill: #ff9e9e;
+      opacity: 0.7;
+    }
+    .bone {
+      fill: #f0f0f0;
+      stroke: #d0d0d0;
+      stroke-width: 3;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .pulsing {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes descent {
+      0% { transform: translateY(-20px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    .descending {
+      animation: descent 2s ease-out forwards;
+    }
+  </style>
+  
+  <rect class="bone" x="156" y="290" width="200" height="150" rx="10" />
+  
+  <path class="gum pulsing" d="M156,290 C156,260 356,260 356,290 L356,320 L156,320 Z" />
+  
+  <g class="descending">
+    <path class="crown" d="M226,180 L226,240 L286,240 L286,180 Q256,160 226,180 Z" />
+    <line class="implant" x1="256" y1="240" x2="256" y2="380" />
+    <line class="threads" x1="236" y1="280" x2="276" y2="280" />
+    <line class="threads" x1="236" y1="310" x2="276" y2="310" />
+    <line class="threads" x1="236" y1="340" x2="276" y2="340" />
+    <line class="threads" x1="236" y1="370" x2="276" y2="370" />
+  </g>
+</svg>

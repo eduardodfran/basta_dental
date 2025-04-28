@@ -17,8 +17,25 @@
         window.location.replace('dashboard.html')
       }
     </script>
+    <!-- Add tsParticles library -->
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.9.3/tsparticles.bundle.min.js"></script>
+    <style>
+      /* Add these styles for the particles container */
+      #signup-particles {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: -1;
+        pointer-events: none;
+      }
+    </style>
   </head>
   <body>
+    <!-- Particles container for signup page -->
+    <div id="signup-particles"></div>
+
     <header>
       <a href="index.html"><i class="fas fa-arrow-left"></i> Back to home</a>
     </header>
@@ -96,5 +113,7 @@
       })
     </script>
     <script src="js/user.js"></script>
+    <!-- Add signup particles script -->
+    <script src="js/signup-particles.js"></script>
   </body>
 </html>

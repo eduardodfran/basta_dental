@@ -5,9 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BastaDental - Your Trusted Dental Clinic</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="animations.css" />
+    <!-- Font Awesome -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <!-- Bootstrap 5 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- AOS Animation Library -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+    <!-- Swiper CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/swiper@8/swiper-bundle.min.css"
     />
     <!-- Add notification system first -->
     <script src="js/notifications.js"></script>
@@ -48,6 +62,9 @@
     </script>
   </head>
   <body>
+    <!-- Particles background container - Moved outside sections -->
+    <div id="particles-js"></div>
+
     <!-- Navbar -->
     <nav class="navbar">
       <div class="container">
@@ -83,22 +100,58 @@
     <!-- Hero Section -->
     <section id="home" class="hero">
       <div class="container">
-        <div class="hero-content">
-          <h1>Welcome to BastaDental</h1>
-          <p>Your trusted partner for a healthy and beautiful smile</p>
-          <button id="book-now-btn" class="btn btn-primary">Book Now</button>
+        <div class="hero-content" data-aos="fade-up" data-aos-duration="1000">
+          <h1 class="animated-heading">
+            Welcome to <span class="highlight-text">BastaDental</span>
+          </h1>
+          <p class="animated-subheading">
+            Your trusted partner for a healthy and beautiful smile
+          </p>
+          <div class="hero-buttons">
+            <button id="book-now-btn" class="btn btn-primary pulse-btn">
+              Book Now
+            </button>
+          </div>
+
+          <!-- Animated dental elements -->
+          <div class="floating-elements">
+            <div class="floating-element tooth-element">
+              <img
+                src="images/animated-tooth.svg"
+                alt="Animated tooth"
+                class="animated-icon"
+              />
+            </div>
+            <div class="floating-element brush-element">
+              <img
+                src="images/animated-brush.svg"
+                alt="Animated brush"
+                class="animated-icon"
+              />
+            </div>
+        </div>
         </div>
       </div>
+      <!-- Hero wave separator -->
+      <div class="wave-separator">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path
+            fill="#f9f9f9"
+            fill-opacity="1"
+            d="M0,150 L48,171 C96,192,192,236,288,246 C384,256,480,236,576,203 C672,172,768,128,864,150 C960,172,1056,256,1152,256 C1248,256,1344,172,1392,128 L1440,86 L1440,320 L1392,320 C1344,320,1248,320,1152,320 C1056,320,960,320,864,320 C768,320,672,320,576,320 C480,320,384,320,288,320 C192,320,96,320,48,320 L0,320 Z">
+            </path>
+        </svg>
+      </div>      
     </section>
 
     <!-- About Section -->
     <section id="about" class="about">
       <div class="container">
-        <div class="section-title">
+        <div class="section-title" data-aos="fade-up">
           <h2>About Us</h2>
         </div>
         <div class="about-content">
-          <div class="about-text">
+          <div class="about-text" data-aos="fade-right" data-aos-delay="200">
             <p>
               At BastaDental, we pride ourselves on providing top-quality dental
               care in a comfortable and modern environment. With over 15 years
@@ -109,12 +162,31 @@
               We use state-of-the-art technology and follow the latest practices
               in dental care to ensure the best results for our patients.
             </p>
+            <div class="stats-container">
+              <div class="stat-item" data-aos="zoom-in" data-aos-delay="300">
+                <span class="stat-number" data-count="15">0</span>
+                <p>Years Experience</p>
+              </div>
+              <div class="stat-item" data-aos="zoom-in" data-aos-delay="400">
+                <span class="stat-number" data-count="10000">0</span>
+                <p>Happy Patients</p>
+              </div>
+              <div class="stat-item" data-aos="zoom-in" data-aos-delay="500">
+                <span class="stat-number" data-count="25">0</span>
+                <p>Expert Dentists</p>
+              </div>
+            </div>
           </div>
-          <div class="about-image">
-            <img
-              src="./images/benyamin-bohlouli-e7MJLM5VGjY-unsplash.jpg"
-              alt="Dental clinic interior"
-            />
+          <div class="about-image" data-aos="fade-left" data-aos-delay="300">
+            <div class="image-container">
+              <img
+                src="./images/benyamin-bohlouli-e7MJLM5VGjY-unsplash.jpg"
+                alt="Dental clinic interior"
+              />
+              <div class="image-overlay">
+                <i class="fas fa-search-plus"></i>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -123,30 +195,148 @@
     <!-- Services Section -->
     <section id="services" class="services">
       <div class="container">
-        <div class="section-title">
+        <div class="section-title" data-aos="fade-up">
           <h2>Our Services</h2>
         </div>
         <div class="services-grid">
-          <div class="service-card">
-            <i class="fas fa-tooth"></i>
+          <div class="service-card" data-aos="flip-left" data-aos-delay="100">
+            <div class="svg-icon-container">
+              <object
+                type="image/svg+xml"
+                data="images/general-dentistry.svg"
+                class="animated-svg-icon"
+              ></object>
+            </div>
             <h3>General Dentistry</h3>
             <p>Regular check-ups, cleanings, and preventive care.</p>
           </div>
-          <div class="service-card">
-            <i class="fas fa-smile"></i>
+          <div class="service-card" data-aos="flip-left" data-aos-delay="200">
+            <div class="svg-icon-container">
+              <object
+                type="image/svg+xml"
+                data="images/cosmetic-dentistry.svg"
+                class="animated-svg-icon"
+              ></object>
+            </div>
             <h3>Cosmetic Dentistry</h3>
             <p>Teeth whitening, veneers, and smile makeovers.</p>
           </div>
-          <div class="service-card">
-            <i class="fas fa-x-ray"></i>
+          <div class="service-card" data-aos="flip-left" data-aos-delay="300">
+            <div class="svg-icon-container">
+              <object
+                type="image/svg+xml"
+                data="images/dental-implants.svg"
+                class="animated-svg-icon"
+              ></object>
+            </div>
             <h3>Dental Implants</h3>
             <p>Replacement teeth that look and feel natural.</p>
           </div>
-          <div class="service-card">
-            <i class="fas fa-teeth-open"></i>
+          <div class="service-card" data-aos="flip-left" data-aos-delay="400">
+            <div class="svg-icon-container">
+              <object
+                type="image/svg+xml"
+                data="images/orthodontics.svg"
+                class="animated-svg-icon"
+              ></object>
+            </div>
             <h3>Orthodontics</h3>
             <p>Braces and aligners for straighter teeth.</p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials Section (NEW) -->
+    <section id="testimonials" class="testimonials">
+      <div class="container">
+        <div class="section-title" data-aos="fade-up">
+          <h2>Patient Testimonials</h2>
+        </div>
+        <div
+          class="swiper testimonialSwiper"
+          data-aos="fade-up"
+          data-aos-delay="200"
+        >
+          <div class="swiper-wrapper">
+            <div class="swiper-slide">
+              <div class="testimonial-card">
+                <div class="quote-icon"><i class="fas fa-quote-left"></i></div>
+                <p>
+                  BastaDental completely transformed my smile and confidence.
+                  The staff is incredibly professional and caring!
+                </p>
+                <div class="testimonial-author">
+                  <img
+                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"
+                    alt="Sarah Johnson"
+                  />
+                  <div>
+                    <h4>Sarah Johnson</h4>
+                    <div class="stars">
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="swiper-slide">
+              <div class="testimonial-card">
+                <div class="quote-icon"><i class="fas fa-quote-left"></i></div>
+                <p>
+                  I had severe dental anxiety before coming here. The team at
+                  BastaDental made me feel comfortable and relaxed throughout my
+                  treatment.
+                </p>
+                <div class="testimonial-author">
+                  <img
+                    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"
+                    alt="Mark Thompson"
+                  />
+                  <div>
+                    <h4>Mark Thompson</h4>
+                    <div class="stars">
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="swiper-slide">
+              <div class="testimonial-card">
+                <div class="quote-icon"><i class="fas fa-quote-left"></i></div>
+                <p>
+                  The dental implant procedure was painless and the results are
+                  amazing. I can smile with confidence again!
+                </p>
+                <div class="testimonial-author">
+                  <img
+                    src="https://images.unsplash.com/photo-1554151228-14d9def656e4?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"
+                    alt="Elena Rodriguez"
+                  />
+                  <div>
+                    <h4>Elena Rodriguez</h4>
+                    <div class="stars">
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="swiper-pagination"></div>
         </div>
       </div>
     </section>
@@ -222,6 +412,14 @@
       </div>
     </footer>
 
+    <!-- JS Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://unpkg.com/swiper@8/swiper-bundle.min.js"></script>
+    <!-- Replace particles.js with tsParticles -->
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.9.3/tsparticles.bundle.min.js"></script>
+    <script src="js/ts-particles-manager.js"></script>
+    <!-- Custom JS -->
     <script>
       // Simple mobile menu toggle
       document.querySelector('.burger').addEventListener('click', function () {
@@ -243,59 +441,123 @@
         .getElementById('book-now-btn')
         .addEventListener('click', function () {
           // Check if user is logged in
-          const user = localStorage.getItem('user');
+          const user = localStorage.getItem('user')
 
           if (user) {
             try {
-              const userData = JSON.parse(user);
+              const userData = JSON.parse(user)
               // Check if user is a dentist
               if (userData.role === 'dentist') {
                 if (typeof showNotificationDialog === 'function') {
-                  showNotificationDialog("Access Restricted", "As a dentist, you cannot book appointments. Please use your dentist dashboard to manage appointments.");
+                  showNotificationDialog(
+                    'Access Restricted',
+                    'As a dentist, you cannot book appointments. Please use your dentist dashboard to manage appointments.'
+                  )
                 } else {
-                  alert("Access Restricted: As a dentist, you cannot book appointments. Please use your dentist dashboard to manage appointments.");
+                  alert(
+                    'Access Restricted: As a dentist, you cannot book appointments. Please use your dentist dashboard to manage appointments.'
+                  )
                 }
-                window.location.href = 'dentist-dashboard.html';
+                window.location.href = 'dentist-dashboard.html'
               } else {
                 // Not a dentist - redirect to booking page
-                window.location.href = 'book-appointment.html'; // For patients and admins - redirect to booking page
+                window.location.href = 'book-appointment.html' // For patients and admins - redirect to booking page
               }
             } catch (e) {
-              console.error('Error parsing user data:', e);
-              window.location.href = 'book-appointment.html';
+              console.error('Error parsing user data:', e)
+              window.location.href = 'book-appointment.html'
             }
           } else {
             // Not logged in - redirect to login page
-            window.location.href = 'login.html';
+            window.location.href = 'login.html'
           }
-        });
+        })
 
       // Add active class to current section in navbar
       document.addEventListener('DOMContentLoaded', function () {
         // Get all sections
-        const sections = document.querySelectorAll('section[id]');
-    
+        const sections = document.querySelectorAll('section[id]')
+
         // Add scroll event listener
         window.addEventListener('scroll', function () {
-          let current = '';
+          let current = ''
           sections.forEach((section) => {
-            const sectionTop = section.offsetTop;
+            const sectionTop = section.offsetTop
             if (pageYOffset >= sectionTop - 60) {
-              current = section.getAttribute('id');
+              current = section.getAttribute('id')
             }
-          });
-    
+          })
+
           // Update active class in navbar
           document.querySelectorAll('.nav-links a').forEach((link) => {
-            link.classList.remove('active');
+            link.classList.remove('active')
             if (link.getAttribute('href') === `#${current}`) {
-              link.classList.add('active');
+              link.classList.add('active')
             }
-          });
-        });
-      });
+          })
+        })
+
+        // Initialize AOS animations
+        AOS.init()
+
+        // Initialize testimonial swiper
+        const testimonialSwiper = new Swiper('.testimonialSwiper', {
+          slidesPerView: 1,
+          spaceBetween: 30,
+          loop: true,
+          autoplay: {
+            delay: 5000,
+            disableOnInteraction: false,
+          },
+          pagination: {
+            el: '.swiper-pagination',
+            clickable: true,
+          },
+          breakpoints: {
+            640: {
+              slidesPerView: 1,
+            },
+            768: {
+              slidesPerView: 2,
+            },
+            1024: {
+              slidesPerView: 3,
+            },
+          },
+        })
+
+        // Animate count numbers
+        const stats = document.querySelectorAll('.stat-number')
+        stats.forEach((stat) => {
+          const target = parseInt(stat.getAttribute('data-count'))
+          const duration = 2000 // Animation duration in milliseconds
+          const step = (target / duration) * 10
+          let current = 0
+
+          const updateCount = () => {
+            current += step
+            if (current < target) {
+              stat.textContent = Math.floor(current)
+              setTimeout(updateCount, 10)
+            } else {
+              stat.textContent = target
+            }
+          }
+
+          // Start animation when element is in viewport
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                setTimeout(updateCount, 400)
+                observer.unobserve(entry.target)
+              }
+            })
+          })
+
+          observer.observe(stat)
+        })
+      })
     </script>
     <script src="js/contact.js"></script>
   </body>
-  <script src="js/contact.js"></script>
 </html>

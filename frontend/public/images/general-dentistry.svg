@@ -1,0 +1,40 @@
+<!-- filepath: c:\Users\Wakin\basta_dental\frontend\public\images\general-dentistry.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style>
+    .tooth-body {
+      fill: #ffffff;
+      stroke: #2a7db7;
+      stroke-width: 12;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tooth-root {
+      fill: #ffffff;
+      stroke: #2a7db7;
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tooth-pulse {
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+  </style>
+  
+  <g class="tooth-pulse">
+    <path class="tooth-body" d="M256,100 Q340,80 380,150 Q420,220 380,300 L256,300 L132,300 Q92,220 132,150 Q172,80 256,100 Z" />
+    <path class="tooth-root" d="M180,300 L160,400" />
+    <path class="tooth-root" d="M256,300 L256,420" />
+    <path class="tooth-root" d="M332,300 L352,400" />
+  </g>
+</svg>
